@@ -19,7 +19,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Component;
 
 import com.netflix.conductor.common.metadata.SchemaDef;
 
@@ -35,7 +34,7 @@ import com.netflix.conductor.common.metadata.SchemaDef;
  * <p>Doubles as the test double for {@link SchemaDAO}: the service and the DAO are two halves of
  * one feature, and a mock would let the service's tests assert on calls instead of on stored state.
  */
-@Component
+// @Component
 @ConditionalOnMissingBean(SchemaDAO.class)
 public class InMemorySchemaDAO implements SchemaDAO {
 

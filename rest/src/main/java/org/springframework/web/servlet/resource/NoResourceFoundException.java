@@ -10,24 +10,15 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package com.netflix.conductor.service;
+package org.springframework.web.servlet.resource;
 
-import org.springframework.stereotype.Service;
+public class NoResourceFoundException extends RuntimeException {
 
-import lombok.extern.slf4j.Slf4j;
-
-@Service
-@Slf4j
-public class VersionService {
-
-    private final String version;
-
-    public VersionService() {
-        this.version = "3.30.2-quarkus";
-        log.info("Conductor version: {}", this.version);
+    public NoResourceFoundException(String message) {
+        super(message);
     }
 
-    public String getVersion() {
-        return version;
+    public NoResourceFoundException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

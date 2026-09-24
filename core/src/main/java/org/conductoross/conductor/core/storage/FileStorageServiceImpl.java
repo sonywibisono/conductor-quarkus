@@ -25,7 +25,6 @@ import org.conductoross.conductor.model.FileModel;
 import org.conductoross.conductor.model.file.*;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.stereotype.Service;
 
 import com.netflix.conductor.core.exception.AccessForbiddenException;
 import com.netflix.conductor.core.exception.ConflictException;
@@ -36,7 +35,7 @@ import com.netflix.conductor.core.exception.NotFoundException;
  * Default {@link FileStorageService} implementation. Activated when {@code
  * conductor.file-storage.enabled=true}.
  */
-@Service
+// @Service (active only when file storage driver is wired)
 @ConditionalOnProperty(name = "conductor.file-storage.enabled", havingValue = "true")
 @EnableConfigurationProperties(FileStorageProperties.class)
 public class FileStorageServiceImpl implements FileStorageService {

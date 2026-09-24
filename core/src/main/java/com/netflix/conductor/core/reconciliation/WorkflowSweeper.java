@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Component;
 
 import com.netflix.conductor.annotations.VisibleForTesting;
 import com.netflix.conductor.common.metadata.tasks.TaskDef;
@@ -43,7 +42,7 @@ import static com.netflix.conductor.core.utils.Utils.DECIDER_QUEUE;
 
 // Deprecated in favor of org.conductoross.conductor.core.execution.WorkflowSweeper
 @Deprecated(forRemoval = true)
-@Component
+// @Component
 @ConditionalOnProperty(
         name = "conductor.app.legacy.sweeper.enabled",
         havingValue = "true",

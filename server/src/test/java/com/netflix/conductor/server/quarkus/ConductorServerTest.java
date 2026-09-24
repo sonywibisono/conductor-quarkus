@@ -10,24 +10,24 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package com.netflix.conductor.service;
+package com.netflix.conductor.server.quarkus;
 
-import org.springframework.stereotype.Service;
+import org.junit.jupiter.api.Test;
 
-import lombok.extern.slf4j.Slf4j;
+import io.quarkus.test.junit.QuarkusTest;
 
-@Service
-@Slf4j
-public class VersionService {
+import static io.restassured.RestAssured.given;
 
-    private final String version;
+@QuarkusTest
+public class ConductorServerTest {
 
-    public VersionService() {
-        this.version = "3.30.2-quarkus";
-        log.info("Conductor version: {}", this.version);
+    @Test
+    public void testHealthEndpoint() {
+        given().when().get("/q/health").then().statusCode(200);
     }
 
-    public String getVersion() {
-        return version;
+    @Test
+    public void testWorkflowMetadataEndpoint() {
+        given().when().get("/api/metadata/workflow").then().statusCode(200);
     }
 }

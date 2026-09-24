@@ -12,6 +12,7 @@
  */
 package com.netflix.conductor.core.execution.tasks;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -37,9 +38,12 @@ public class SystemTaskRegistry {
 
     @Autowired
     public SystemTaskRegistry(
-            Set<WorkflowSystemTask> tasks,
+            jakarta.enterprise.inject.Instance<WorkflowSystemTask> tasks,
             @Qualifier(ASYNC_SYSTEM_TASKS_QUALIFIER) Set<WorkflowSystemTask> asyncSystemTasks) {
-        this(tasks);
+        this.registry = new HashMap<>();
+        for (WorkflowSystemTask t : tasks) {
+            this.registry.put(t.getTaskType(), t);
+        }
         asyncSystemTasks.forEach(task -> registry.putIfAbsent(task.getTaskType(), task));
     }
 

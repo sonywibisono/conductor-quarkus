@@ -36,7 +36,6 @@ import com.netflix.conductor.core.utils.Utils;
 import com.netflix.conductor.metrics.Monitors;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
-import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
 @Order(ValidationExceptionMapper.ORDER + 1)
@@ -64,12 +63,21 @@ public class ApplicationExceptionMapper {
                 HttpRequestMethodNotSupportedException.class, HttpStatus.METHOD_NOT_ALLOWED);
     }
 
-    @ExceptionHandler(Throwable.class)
-    public ResponseEntity<ErrorResponse> handleAll(HttpServletRequest request, Throwable th) {
+    private final ValidationExceptionMapper validationExceptionMapper =
+            new ValidationExceptionMapper();
+
+    @ExceptionHandler(jakarta.validation.ValidationException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(
+            jakarta.validation.ValidationException ex) {
+        return validationExceptionMapper.toResponse(ex);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleAll(Exception th) {
         HttpStatus status =
                 EXCEPTION_STATUS_MAP.getOrDefault(th.getClass(), HttpStatus.INTERNAL_SERVER_ERROR);
 
-        logException(request, th, status);
+        logException(th, status);
 
         ErrorResponse errorResponse = new ErrorResponse();
         errorResponse.setInstance(host);
@@ -83,7 +91,7 @@ public class ApplicationExceptionMapper {
         return new ResponseEntity<>(errorResponse, status);
     }
 
-    private void logException(HttpServletRequest request, Throwable exception, HttpStatus status) {
+    private void logException(Throwable exception, HttpStatus status) {
         // 4xx responses represent client-side errors that Conductor handled
         // correctly (for example NotFoundException -> 404, ConflictException -> 409).
         // Logging them at ERROR pollutes the server error logs and hides genuine
@@ -91,15 +99,15 @@ public class ApplicationExceptionMapper {
         // and any unmapped exception (which falls back to 500).
         if (status.is4xxClientError()) {
             LOGGER.warn(
-                    "Error {} url: '{}'",
+                    "Client error {}: {}",
                     exception.getClass().getSimpleName(),
-                    request.getRequestURI(),
+                    exception.getMessage(),
                     exception);
         } else {
             LOGGER.error(
-                    "Error {} url: '{}'",
+                    "Server error {}: {}",
                     exception.getClass().getSimpleName(),
-                    request.getRequestURI(),
+                    exception.getMessage(),
                     exception);
         }
     }

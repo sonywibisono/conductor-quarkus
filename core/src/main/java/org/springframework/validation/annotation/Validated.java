@@ -10,24 +10,17 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package com.netflix.conductor.service;
+package org.springframework.validation.annotation;
 
-import org.springframework.stereotype.Service;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Service
-@Slf4j
-public class VersionService {
-
-    private final String version;
-
-    public VersionService() {
-        this.version = "3.30.2-quarkus";
-        log.info("Conductor version: {}", this.version);
-    }
-
-    public String getVersion() {
-        return version;
-    }
+@Target({ElementType.TYPE, ElementType.METHOD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface Validated {
+    Class<?>[] value() default {};
 }

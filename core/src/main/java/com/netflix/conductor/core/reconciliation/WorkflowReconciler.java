@@ -19,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 import com.netflix.conductor.core.LifecycleAwareComponent;
 import com.netflix.conductor.core.config.ConductorProperties;
@@ -35,7 +34,7 @@ import static com.netflix.conductor.core.utils.Utils.DECIDER_QUEUE;
 // Deprecated - and superseeded by new WorkflowSweeper in org.conductoross.conductor.core.execution
 // package
 @Deprecated(forRemoval = true)
-@Component
+// @Component
 @ConditionalOnProperty(
         name = "conductor.workflow-reconciler.enabled",
         havingValue = "true",

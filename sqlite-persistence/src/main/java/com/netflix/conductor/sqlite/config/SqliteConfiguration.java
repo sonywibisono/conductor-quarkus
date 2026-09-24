@@ -40,8 +40,6 @@ import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 
-import com.netflix.conductor.core.sync.Lock;
-import com.netflix.conductor.core.sync.local.LocalOnlyLock;
 import com.netflix.conductor.sqlite.dao.*;
 import com.netflix.conductor.sqlite.dao.metadata.SqliteEventHandlerMetadataDAO;
 import com.netflix.conductor.sqlite.dao.metadata.SqliteMetadataDAO;
@@ -179,15 +177,6 @@ public class SqliteConfiguration {
             ObjectMapper objectMapper,
             SqliteProperties properties) {
         return new SqliteIndexDAO(retryTemplate, objectMapper, dataSource, properties);
-    }
-
-    @Bean
-    @DependsOn({"flywayForPrimaryDb"})
-    @ConditionalOnProperty(name = "conductor.workflow-execution-lock.type", havingValue = "sqlite")
-    public Lock sqliteLockDAO(
-            @Qualifier("sqliteRetryTemplate") RetryTemplate retryTemplate,
-            ObjectMapper objectMapper) {
-        return new LocalOnlyLock();
     }
 
     @Bean

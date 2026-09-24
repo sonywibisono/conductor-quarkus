@@ -16,12 +16,11 @@ import java.util.Collections;
 import java.util.List;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import com.netflix.conductor.common.metadata.EnvironmentVariable;
 import com.netflix.conductor.dao.EnvironmentDAO;
 
-@Component
+// @Component
 @ConditionalOnProperty(name = "conductor.environment.type", havingValue = "noop")
 public class NoopEnvironmentDAO implements EnvironmentDAO {
 

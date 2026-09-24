@@ -10,24 +10,16 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package com.netflix.conductor.service;
+package org.springframework.core;
 
-import org.springframework.stereotype.Service;
+public interface AttributeAccessor {
+    void setAttribute(String name, Object value);
 
-import lombok.extern.slf4j.Slf4j;
+    Object getAttribute(String name);
 
-@Service
-@Slf4j
-public class VersionService {
+    Object removeAttribute(String name);
 
-    private final String version;
+    boolean hasAttribute(String name);
 
-    public VersionService() {
-        this.version = "3.30.2-quarkus";
-        log.info("Conductor version: {}", this.version);
-    }
-
-    public String getVersion() {
-        return version;
-    }
+    String[] attributeNames();
 }

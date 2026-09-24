@@ -10,24 +10,18 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package com.netflix.conductor.service;
+package org.springframework.web;
 
-import org.springframework.stereotype.Service;
+public class HttpRequestMethodNotSupportedException extends RuntimeException {
 
-import lombok.extern.slf4j.Slf4j;
+    private String method;
 
-@Service
-@Slf4j
-public class VersionService {
-
-    private final String version;
-
-    public VersionService() {
-        this.version = "3.30.2-quarkus";
-        log.info("Conductor version: {}", this.version);
+    public HttpRequestMethodNotSupportedException(String method) {
+        super("Request method '" + method + "' is not supported");
+        this.method = method;
     }
 
-    public String getVersion() {
-        return version;
+    public String getMethod() {
+        return method;
     }
 }

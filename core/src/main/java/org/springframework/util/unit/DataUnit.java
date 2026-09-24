@@ -10,24 +10,24 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package com.netflix.conductor.service;
+package org.springframework.util.unit;
 
-import org.springframework.stereotype.Service;
+public enum DataUnit {
+    BYTES("B", DataSize.ofBytes(1L)),
+    KILOBYTES("KB", DataSize.ofKilobytes(1L)),
+    MEGABYTES("MB", DataSize.ofMegabytes(1L)),
+    GIGABYTES("GB", DataSize.ofGigabytes(1L)),
+    TERABYTES("TB", DataSize.ofTerabytes(1L));
 
-import lombok.extern.slf4j.Slf4j;
+    private final String suffix;
+    private final DataSize size;
 
-@Service
-@Slf4j
-public class VersionService {
-
-    private final String version;
-
-    public VersionService() {
-        this.version = "3.30.2-quarkus";
-        log.info("Conductor version: {}", this.version);
+    DataUnit(String suffix, DataSize size) {
+        this.suffix = suffix;
+        this.size = size;
     }
 
-    public String getVersion() {
-        return version;
+    public DataSize size() {
+        return this.size;
     }
 }

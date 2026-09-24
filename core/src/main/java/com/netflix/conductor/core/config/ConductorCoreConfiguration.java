@@ -12,13 +12,11 @@
  */
 package com.netflix.conductor.core.config;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.conductoross.conductor.core.listener.MetadataChangeListener;
@@ -44,13 +42,10 @@ import com.netflix.conductor.core.listener.WorkflowStatusListener;
 import com.netflix.conductor.core.listener.WorkflowStatusListenerStub;
 import com.netflix.conductor.core.storage.DummyPayloadStorage;
 import com.netflix.conductor.core.sync.Lock;
-import com.netflix.conductor.core.sync.noop.NoopLock;
 import com.netflix.conductor.core.utils.IDGenerator;
 
 import static com.netflix.conductor.core.events.EventQueues.EVENT_QUEUE_PROVIDERS_QUALIFIER;
 import static com.netflix.conductor.core.execution.tasks.SystemTaskRegistry.ASYNC_SYSTEM_TASKS_QUALIFIER;
-
-import static java.util.function.Function.identity;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ConductorProperties.class)
@@ -58,13 +53,9 @@ public class ConductorCoreConfiguration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConductorCoreConfiguration.class);
 
-    @ConditionalOnProperty(
-            name = "conductor.workflow-execution-lock.type",
-            havingValue = "noop_lock",
-            matchIfMissing = true)
     @Bean
     public Lock provideLock() {
-        return new NoopLock();
+        return new com.netflix.conductor.core.sync.local.LocalOnlyLock();
     }
 
     @ConditionalOnProperty(
@@ -115,34 +106,42 @@ public class ConductorCoreConfiguration {
                 conductorProperties.getExecutorServiceMaxThreadCount(), threadFactory);
     }
 
-    @Bean
+    @Bean("taskMappersByTaskType")
     @Qualifier("taskMappersByTaskType")
-    public Map<String, TaskMapper> getTaskMappers(List<TaskMapper> taskMappers) {
-        // Return mutable map so annotated task mappers can be added
-        return taskMappers.stream()
-                .collect(
-                        Collectors.toMap(
-                                TaskMapper::getTaskType,
-                                identity(),
-                                (a, b) -> a,
-                                java.util.HashMap::new));
+    @jakarta.inject.Named("taskMappersByTaskType")
+    public Map<String, TaskMapper> getTaskMappers(
+            jakarta.enterprise.inject.Instance<TaskMapper> taskMappers) {
+        Map<String, TaskMapper> map = new java.util.HashMap<>();
+        for (TaskMapper tm : taskMappers) {
+            map.putIfAbsent(tm.getTaskType(), tm);
+        }
+        return map;
     }
 
-    @Bean
+    @Bean(ASYNC_SYSTEM_TASKS_QUALIFIER)
     @Qualifier(ASYNC_SYSTEM_TASKS_QUALIFIER)
-    public Set<WorkflowSystemTask> asyncSystemTasks(Set<WorkflowSystemTask> allSystemTasks) {
-        // Return mutable set so annotated tasks can be added
-        return allSystemTasks.stream()
-                .filter(WorkflowSystemTask::isAsync)
-                .collect(Collectors.toCollection(java.util.HashSet::new));
+    @jakarta.inject.Named(ASYNC_SYSTEM_TASKS_QUALIFIER)
+    public Set<WorkflowSystemTask> asyncSystemTasks(
+            jakarta.enterprise.inject.Instance<WorkflowSystemTask> allSystemTasks) {
+        Set<WorkflowSystemTask> set = new java.util.HashSet<>();
+        for (WorkflowSystemTask t : allSystemTasks) {
+            if (t.isAsync()) {
+                set.add(t);
+            }
+        }
+        return set;
     }
 
-    @Bean
+    @Bean(EVENT_QUEUE_PROVIDERS_QUALIFIER)
     @Qualifier(EVENT_QUEUE_PROVIDERS_QUALIFIER)
+    @jakarta.inject.Named(EVENT_QUEUE_PROVIDERS_QUALIFIER)
     public Map<String, EventQueueProvider> getEventQueueProviders(
-            List<EventQueueProvider> eventQueueProviders) {
-        return eventQueueProviders.stream()
-                .collect(Collectors.toMap(EventQueueProvider::getQueueType, identity()));
+            jakarta.enterprise.inject.Instance<EventQueueProvider> eventQueueProviders) {
+        Map<String, EventQueueProvider> map = new java.util.HashMap<>();
+        for (EventQueueProvider p : eventQueueProviders) {
+            map.put(p.getQueueType(), p);
+        }
+        return map;
     }
 
     @Bean

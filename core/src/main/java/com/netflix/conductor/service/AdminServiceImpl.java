@@ -47,14 +47,13 @@ public class AdminServiceImpl implements AdminService {
             ExecutionService executionService,
             QueueDAO queueDAO,
             Optional<WorkflowRepairService> workflowRepairService,
-            Optional<EventQueueManager> eventQueueManager,
-            Optional<BuildProperties> buildProperties) {
+            Optional<EventQueueManager> eventQueueManager) {
         this.properties = properties;
         this.executionService = executionService;
         this.queueDAO = queueDAO;
         this.workflowRepairService = workflowRepairService.orElse(null);
         this.eventQueueManager = eventQueueManager.orElse(null);
-        this.buildProperties = buildProperties.orElse(null);
+        this.buildProperties = null;
     }
 
     /**

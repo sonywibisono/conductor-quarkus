@@ -20,11 +20,8 @@ import org.conductoross.conductor.core.exception.SchemaValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.netflix.conductor.common.validation.ErrorResponse;
 import com.netflix.conductor.common.validation.ValidationError;
@@ -37,8 +34,6 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.ValidationException;
 
 /** This class converts Hibernate {@link ValidationException} into http response. */
-@RestControllerAdvice
-@Order(ValidationExceptionMapper.ORDER)
 public class ValidationExceptionMapper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationExceptionMapper.class);
@@ -47,18 +42,13 @@ public class ValidationExceptionMapper {
 
     private final String host = Utils.getServerId();
 
-    @ExceptionHandler(ValidationException.class)
-    public ResponseEntity<ErrorResponse> toResponse(
-            HttpServletRequest request, ValidationException exception) {
-        logException(request, exception);
+    public ResponseEntity<ErrorResponse> toResponse(ValidationException exception) {
+        LOGGER.error("Validation error: {}", exception.getMessage(), exception);
 
         HttpStatus httpStatus;
 
         if (exception instanceof ConstraintViolationException
                 || exception instanceof SchemaValidationException) {
-            // A schema failure is the caller's payload to fix, like a constraint violation, so it
-            // must not fall into the 500 branch below. This handler runs at highest precedence, so
-            // it — not ApplicationExceptionMapper's status map — decides the schema case.
             httpStatus = HttpStatus.BAD_REQUEST;
         } else {
             httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -66,6 +56,11 @@ public class ValidationExceptionMapper {
         }
 
         return new ResponseEntity<>(toErrorResponse(exception), httpStatus);
+    }
+
+    public ResponseEntity<ErrorResponse> toResponse(
+            HttpServletRequest request, ValidationException exception) {
+        return toResponse(exception);
     }
 
     private ErrorResponse toErrorResponse(ValidationException ve) {

@@ -10,24 +10,12 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package com.netflix.conductor.service;
+package org.springframework.web.servlet.mvc.method.annotation;
 
-import org.springframework.stereotype.Service;
+import java.io.IOException;
+import java.io.OutputStream;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Service
-@Slf4j
-public class VersionService {
-
-    private final String version;
-
-    public VersionService() {
-        this.version = "3.30.2-quarkus";
-        log.info("Conductor version: {}", this.version);
-    }
-
-    public String getVersion() {
-        return version;
-    }
+@FunctionalInterface
+public interface StreamingResponseBody {
+    void writeTo(OutputStream outputStream) throws IOException;
 }
