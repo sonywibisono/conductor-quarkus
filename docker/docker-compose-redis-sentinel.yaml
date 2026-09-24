@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  conductor-server:
+    image: conductor:server
+    container_name: conductor-server
+    build:
+      context: ../
+      dockerfile: docker/server/Dockerfile
+    environment:
+      - CONFIG_PROP=config-redis-sentinel.properties
+      - conductor.app.ownerEmailMandatory=false
+    ports:
+      - "8080:8080"
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/q/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      redis-sentinel-1:
+        condition: service_healthy
+      redis-sentinel-2:
+        condition: service_healthy
+      redis-sentinel-3:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+    networks:
+      - sentinel-net
+
+  redis-master:
+    image: redis:8.2.4-alpine3.22
+    container_name: redis-master
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sentinel-net
+
+  redis-replica:
+    image: redis:8.2.4-alpine3.22
+    container_name: redis-replica
+    command: redis-server --replicaof redis-master 6379
+    ports:
+      - "6380:6379"
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sentinel-net
+
+  redis-sentinel-1:
+    image: redis:8.2.4-alpine3.22
+    container_name: redis-sentinel-1
+    command: >
+      sh -c '
+        echo "port 26379" > /tmp/sentinel.conf &&
+        echo "sentinel monitor mymaster redis-master 6379 2" >> /tmp/sentinel.conf &&
+        echo "sentinel down-after-milliseconds mymaster 5000" >> /tmp/sentinel.conf &&
+        echo "sentinel failover-timeout mymaster 10000" >> /tmp/sentinel.conf &&
+        echo "sentinel parallel-syncs mymaster 1" >> /tmp/sentinel.conf &&
+        redis-server /tmp/sentinel.conf --sentinel
+      '
+    ports:
+      - "26379:26379"
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sentinel-net
+
+  redis-sentinel-2:
+    image: redis:8.2.4-alpine3.22
+    container_name: redis-sentinel-2
+    command: >
+      sh -c '
+        echo "port 26379" > /tmp/sentinel.conf &&
+        echo "sentinel monitor mymaster redis-master 6379 2" >> /tmp/sentinel.conf &&
+        echo "sentinel down-after-milliseconds mymaster 5000" >> /tmp/sentinel.conf &&
+        echo "sentinel failover-timeout mymaster 10000" >> /tmp/sentinel.conf &&
+        echo "sentinel parallel-syncs mymaster 1" >> /tmp/sentinel.conf &&
+        redis-server /tmp/sentinel.conf --sentinel
+      '
+    ports:
+      - "26380:26379"
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sentinel-net
+
+  redis-sentinel-3:
+    image: redis:8.2.4-alpine3.22
+    container_name: redis-sentinel-3
+    command: >
+      sh -c '
+        echo "port 26379" > /tmp/sentinel.conf &&
+        echo "sentinel monitor mymaster redis-master 6379 2" >> /tmp/sentinel.conf &&
+        echo "sentinel down-after-milliseconds mymaster 5000" >> /tmp/sentinel.conf &&
+        echo "sentinel failover-timeout mymaster 10000" >> /tmp/sentinel.conf &&
+        echo "sentinel parallel-syncs mymaster 1" >> /tmp/sentinel.conf &&
+        redis-server /tmp/sentinel.conf --sentinel
+      '
+    ports:
+      - "26381:26379"
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sentinel-net
+
+networks:
+  sentinel-net:
+    driver: bridge

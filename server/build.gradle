@@ -21,6 +21,8 @@ dependencies {
     implementation project(':conductor-core')
     implementation project(':conductor-rest')
     implementation project(':conductor-sqlite-persistence')
+    implementation project(':conductor-redis-configuration')
+    implementation project(':conductor-redis-persistence')
 
     implementation "org.flywaydb:flyway-core:${revFlyway}"
     implementation 'org.springframework.retry:spring-retry'

@@ -20,7 +20,7 @@
 
 Conductor Quarkus is an open-source, cloud-native port of Netflix Conductor OSS built on top of **Quarkus 3.30.6** and Java 21+. It offers sub-second cold starts (~1.5s), drastically reduced memory overhead, native OpenAPI/Swagger UI, and live-reload development mode while preserving full REST API and workflow compatibility with Conductor OSS.
 
-> **Note on UI Exclusion:** This repository contains the headless, API-first backend engine. All front-end assets (`ui` and `ui-next`) have been excluded. Management and inspection are conducted via the built-in Swagger UI, standard Conductor REST APIs, CLI, or polyglot SDKs.
+This distribution includes **ui-next**, the modern React 18, Vite, and Material-UI dashboard for inspecting workflows, executing definitions, and monitoring tasks.
 
 ---
 
@@ -30,6 +30,7 @@ Conductor Quarkus is an open-source, cloud-native port of Netflix Conductor OSS 
 |---|---|
 | **Ultra-Fast Startup** | Boots in ~1.5 seconds on JVM (compared to ~15-25 seconds on legacy stacks). |
 | **Low Memory Footprint** | Optimized CDI Lite runtime via Quarkus ArC with zero Spring runtime container overhead. |
+| **Integrated UI (ui-next)** | Modern React 18 / Vite UI dashboard served via Nginx in Docker or embedded in Quarkus. |
 | **Live Coding & Dev Mode** | Near-instant hot reload of code and configuration changes via `./gradlew :conductor-server:quarkusDev`. |
 | **Built-in SQLite Persistence** | Zero-configuration local database using Agroal and automated Flyway schema migrations. |
 | **Standard Observability** | Native SmallRye Health (`/q/health`), Prometheus metrics (`/q/metrics`), and OpenAPI/Swagger UI (`/q/swagger-ui/`). |
@@ -41,6 +42,8 @@ Conductor Quarkus is an open-source, cloud-native port of Netflix Conductor OSS 
 # Prerequisites
 
 - **Java 21+** installed and configured on your `PATH`.
+- **Node.js 20+** and **pnpm** (if developing or building `ui-next` locally).
+- **Docker** and **Docker Compose** (for containerized deployments).
 - **Git**.
 
 ---
@@ -80,6 +83,67 @@ To start the server with live reload and continuous testing enabled:
 ```
 
 Changes made to Java classes or configuration files are recompiled and reloaded automatically on incoming HTTP requests.
+
+---
+
+# Running with Docker & Docker Compose
+
+### Option A: Standalone Conductor + UI (Zero External Dependencies)
+
+Run Conductor Quarkus with embedded SQLite persistence and `ui-next`:
+
+```shell
+docker compose -f docker/docker-compose-sqlite.yaml up --build
+```
+
+- **Web Dashboard (ui-next)**: [http://localhost:5000](http://localhost:5000)
+- **REST API & Swagger UI**: [http://localhost:8080](http://localhost:8080)
+
+### Option B: Distributed Conductor (Redis + Elasticsearch)
+
+```shell
+docker compose -f docker/docker-compose.yaml up --build
+```
+
+### Option C: PostgreSQL Persistence
+
+```shell
+docker compose -f docker/docker-compose-postgres.yaml up --build
+```
+
+### Option D: High-Availability Redis Sentinel (Replication & Automatic Failover)
+
+Run Conductor Quarkus with an automated Redis HA cluster consisting of 1 Primary, 1 Replica, and 3 Sentinel nodes (quorum 2):
+
+```shell
+docker compose -f docker/docker-compose-redis-sentinel.yaml up --build
+```
+
+---
+
+# Developing UI (ui-next) Locally
+
+To run the modern UI with hot reload while developing:
+
+1. Ensure the Conductor Quarkus server is running on `http://localhost:8080` (e.g. via `./gradlew :conductor-server:quarkusDev`).
+2. Start the Vite dev server:
+
+```shell
+cd ui-next
+pnpm install
+pnpm dev
+```
+
+Open [http://localhost:1234](http://localhost:1234) in your browser. The Vite server proxies API calls directly to `http://localhost:8080`.
+
+### Embedding ui-next into the Quarkus Server JAR
+
+To bundle the compiled UI directly into the Quarkus server artifact:
+
+```shell
+./build_ui_next.sh
+./gradlew :conductor-server:quarkusBuild
+```
 
 ---
 

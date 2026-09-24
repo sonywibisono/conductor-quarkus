@@ -27,6 +27,10 @@ buildscan.log
 node_modules
 /ui/build
 /ui/public/monaco-editor
+/ui-next/dist
+/ui-next/node_modules
+/ui-next/.pnpm-store
+/server/src/main/resources/META-INF/resources
 
 # publishing secrets
 secrets/signing-key
