@@ -1,0 +1,340 @@
+/*
+ * Copyright 2023 Conductor Authors.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+package com.netflix.conductor.postgres.util;
+
+import java.sql.SQLException;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.StringUtils;
+
+import com.netflix.conductor.common.metadata.workflow.WorkflowClassifier;
+import com.netflix.conductor.postgres.config.PostgresProperties;
+
+public class PostgresIndexQueryBuilder {
+
+    private final String table;
+    private final String freeText;
+    private final int start;
+    private final int count;
+    private final List<String> sort;
+    private final List<Condition> conditions = new ArrayList<>();
+
+    private boolean allowJsonQueries;
+
+    private boolean allowFullTextQueries;
+
+    private static final String[] VALID_FIELDS = {
+        "workflow_id",
+        "correlation_id",
+        "workflow_type",
+        "start_time",
+        "end_time",
+        "status",
+        "task_id",
+        "task_type",
+        "task_def_name",
+        "update_time",
+        "json_data",
+        "parent_workflow_id",
+        "classifier",
+        "jsonb_to_tsvector('english', json_data, '[\"all\"]')"
+    };
+
+    private static final String[] VALID_SORT_ORDER = {"ASC", "DESC"};
+
+    private static class Condition {
+        private static final Pattern CONDITION_PATTERN =
+                Pattern.compile("^([a-zA-Z]++)\\s*(=|>|<|IN)\\s*(.*)$");
+
+        private String attribute;
+        private String operator;
+        private List<String> values;
+
+        public Condition() {}
+
+        public Condition(String query) {
+            Matcher conditionMatcher = CONDITION_PATTERN.matcher(query);
+            if (conditionMatcher.find()) {
+                String[] valueArr = conditionMatcher.group(3).replaceAll("[\"'()]", "").split(",");
+                ArrayList<String> values = new ArrayList<>(Arrays.asList(valueArr));
+                this.attribute = camelToSnake(conditionMatcher.group(1));
+                this.values = values;
+                this.operator = getOperator(conditionMatcher.group(2));
+                if (this.attribute.endsWith("_time")) {
+                    values.set(0, millisToUtc(values.get(0)));
+                }
+            } else {
+                throw new IllegalArgumentException("Incorrectly formatted query string: " + query);
+            }
+        }
+
+        public String getQueryFragment() {
+            if (operator.equals("IN")) {
+                if (classifierMatchesUntagged()) {
+                    return "(" + attribute + " = ANY(?) OR " + attribute + " IS NULL)";
+                }
+                return attribute + " = ANY(?)";
+            } else if (operator.equals("@@")) {
+                return attribute + " @@ to_tsquery(?)";
+            } else if (operator.equals("@>")) {
+                return attribute + " @> ?::JSONB";
+            } else {
+                if (attribute.endsWith("_time")) {
+                    return attribute + " " + operator + " ?::TIMESTAMPTZ";
+                } else if (operator.equals("=")
+                        && values.size() == 1
+                        && values.get(0).contains("*")) {
+                    return attribute + " LIKE ?";
+                } else if (operator.equals("=") && classifierMatchesUntagged()) {
+                    return "(" + attribute + " = ? OR " + attribute + " IS NULL)";
+                } else {
+                    return attribute + " " + operator + " ?";
+                }
+            }
+        }
+
+        /**
+         * Rows indexed before the classifier column existed have a NULL classifier but are
+         * semantically untagged, i.e. plain workflows. When a filter asks for the untagged token
+         * ({@link WorkflowClassifier#WORKFLOW}), widen the predicate to also match those legacy
+         * NULL rows.
+         */
+        private boolean classifierMatchesUntagged() {
+            return "classifier".equals(attribute)
+                    && values != null
+                    && values.stream().anyMatch(WorkflowClassifier.WORKFLOW::equalsIgnoreCase);
+        }
+
+        private String getOperator(String op) {
+            if (op.equals("IN") && values.size() == 1) {
+                return "=";
+            }
+            return op;
+        }
+
+        public void addParameter(Query q) throws SQLException {
+            if (values.size() > 1) {
+                q.addParameter(values);
+            } else {
+                String val = values.get(0);
+                if (val.contains("*")) {
+                    val = val.replace("*", "%");
+                }
+                q.addParameter(val);
+            }
+        }
+
+        private String millisToUtc(String millis) {
+            Long startTimeMilli = Long.parseLong(millis);
+            ZonedDateTime startDate =
+                    ZonedDateTime.ofInstant(Instant.ofEpochMilli(startTimeMilli), ZoneOffset.UTC);
+            return DateTimeFormatter.ISO_DATE_TIME.format(startDate);
+        }
+
+        private boolean isValid() {
+            return Arrays.asList(VALID_FIELDS).contains(attribute);
+        }
+
+        public void setAttribute(String attribute) {
+            this.attribute = attribute;
+        }
+
+        public void setOperator(String operator) {
+            this.operator = operator;
+        }
+
+        public void setValues(List<String> values) {
+            this.values = values;
+        }
+    }
+
+    public PostgresIndexQueryBuilder(
+            String table,
+            String query,
+            String freeText,
+            int start,
+            int count,
+            List<String> sort,
+            PostgresProperties properties) {
+        this.table = table;
+        this.freeText = freeText;
+        this.start = start;
+        this.count = count;
+        this.sort = sort;
+        this.allowFullTextQueries = properties.getAllowFullTextQueries();
+        this.allowJsonQueries = properties.getAllowJsonQueries();
+        this.parseQuery(query);
+        this.parseFreeText(freeText);
+    }
+
+    public String getQuery() {
+        String queryString = "";
+        List<Condition> validConditions =
+                conditions.stream().filter(c -> c.isValid()).collect(Collectors.toList());
+        if (validConditions.size() > 0) {
+            queryString =
+                    " WHERE "
+                            + String.join(
+                                    " AND ",
+                                    validConditions.stream()
+                                            .map(c -> c.getQueryFragment())
+                                            .collect(Collectors.toList()));
+        }
+        return hierarchyCte()
+                + "SELECT json_data::TEXT FROM "
+                + table
+                + hierarchyJoin()
+                + queryString
+                + getSort()
+                + " LIMIT ? OFFSET ?";
+    }
+
+    public String getCountQuery() {
+        String queryString = "";
+        List<Condition> validConditions =
+                conditions.stream().filter(c -> c.isValid()).collect(Collectors.toList());
+        if (validConditions.size() > 0) {
+            queryString =
+                    " WHERE "
+                            + String.join(
+                                    " AND ",
+                                    validConditions.stream()
+                                            .map(c -> c.getQueryFragment())
+                                            .collect(Collectors.toList()));
+        }
+        return "SELECT COUNT(json_data) FROM " + table + queryString;
+    }
+
+    public void addParameters(Query q) throws SQLException {
+        for (Condition condition : conditions) {
+            condition.addParameter(q);
+        }
+    }
+
+    public void addPagingParameters(Query q) throws SQLException {
+        q.addParameter(count);
+        q.addParameter(start);
+    }
+
+    private void parseQuery(String query) {
+        if (!StringUtils.isEmpty(query)) {
+            for (String s : query.split(" AND ")) {
+                conditions.add(new Condition(s));
+            }
+            Collections.sort(conditions, Comparator.comparing(Condition::getQueryFragment));
+        }
+    }
+
+    private void parseFreeText(String freeText) {
+        if (!StringUtils.isEmpty(freeText) && !freeText.equals("*")) {
+            if (allowJsonQueries && freeText.startsWith("{") && freeText.endsWith("}")) {
+                Condition cond = new Condition();
+                cond.setAttribute("json_data");
+                cond.setOperator("@>");
+                String[] values = {freeText};
+                cond.setValues(Arrays.asList(values));
+                conditions.add(cond);
+            } else if (allowFullTextQueries) {
+                Condition cond = new Condition();
+                cond.setAttribute("jsonb_to_tsvector('english', json_data, '[\"all\"]')");
+                cond.setOperator("@@");
+                String[] values = {freeText};
+                cond.setValues(Arrays.asList(values));
+                conditions.add(cond);
+            }
+        }
+    }
+
+    private String getSort() {
+        ArrayList<String> sortConds = new ArrayList<>();
+        for (String s : sort) {
+            String[] splitCond = s.split(":");
+            if (splitCond.length == 2) {
+                String attribute = camelToSnake(splitCond[0]);
+                String order = splitCond[1].toUpperCase();
+                if ("agent_hierarchy".equals(attribute)
+                        && Arrays.asList(VALID_SORT_ORDER).contains(order)) {
+                    sortConds.add(agentHierarchySort(order));
+                } else if (Arrays.asList(VALID_FIELDS).contains(attribute)
+                        && Arrays.asList(VALID_SORT_ORDER).contains(order)) {
+                    sortConds.add(attribute + " " + order);
+                }
+            }
+        }
+
+        if (sortConds.size() > 0) {
+            return " ORDER BY " + String.join(", ", sortConds);
+        }
+        return "";
+    }
+
+    /**
+     * Groups an agent root and every descendant in depth-first order. The recursive CTE makes this
+     * a database operation before pagination, so a nested sub-agent cannot be separated from its
+     * ancestors by another execution page.
+     */
+    private String agentHierarchySort(String order) {
+        return "COALESCE(workflow_hierarchy.root_start_time, "
+                + table
+                + ".start_time) "
+                + order
+                + ", COALESCE(workflow_hierarchy.root_workflow_id, "
+                + table
+                + ".workflow_id) ASC, CASE WHEN "
+                + "workflow_hierarchy.workflow_id IS NULL THEN 1 ELSE 0 END ASC, "
+                + "workflow_hierarchy.hierarchy_path ASC";
+    }
+
+    private boolean hasAgentHierarchySort() {
+        return "workflow_index".equals(table)
+                && sort.stream()
+                        .map(s -> s.split(":", 2)[0])
+                        .map(PostgresIndexQueryBuilder::camelToSnake)
+                        .anyMatch("agent_hierarchy"::equals);
+    }
+
+    private String hierarchyCte() {
+        if (!hasAgentHierarchySort()) {
+            return "";
+        }
+        return "WITH RECURSIVE workflow_hierarchy(workflow_id, root_workflow_id, root_start_time, hierarchy_path) AS ("
+                + " SELECT workflow_id, workflow_id, start_time, '|' || workflow_id || '|'"
+                + " FROM workflow_index WHERE parent_workflow_id IS NULL OR parent_workflow_id = ''"
+                + " UNION ALL"
+                + " SELECT child.workflow_id, parent.root_workflow_id, parent.root_start_time,"
+                + " parent.hierarchy_path || child.workflow_id || '|'"
+                + " FROM workflow_index child JOIN workflow_hierarchy parent"
+                + " ON child.parent_workflow_id = parent.workflow_id"
+                + " WHERE strpos(parent.hierarchy_path, '|' || child.workflow_id || '|') = 0"
+                + ") ";
+    }
+
+    private String hierarchyJoin() {
+        return hasAgentHierarchySort()
+                ? " LEFT JOIN workflow_hierarchy ON workflow_hierarchy.workflow_id = "
+                        + table
+                        + ".workflow_id"
+                : "";
+    }
+
+    private static String camelToSnake(String camel) {
+        return camel.replaceAll("\\B([A-Z])", "_$1").toLowerCase();
+    }
+}
