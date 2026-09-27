@@ -1,0 +1,55 @@
+stages:
+  - build
+  - publish
+
+variables:
+  # Tag images dynamically using the shortened Git commit SHA 
+  IMAGE_TAG: $HARBOR_REGISTRY/$HARBOR_PROJECT/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA
+  # Tag images as "latest" if merged into the default branch
+  IMAGE_LATEST: $HARBOR_REGISTRY/$HARBOR_PROJECT/$CI_PROJECT_NAME:latest
+
+# Build and test workspace dependencies within GitLab CI runner
+build_app:
+  stage: build
+  image: node:22-alpine
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - .pnpm-store
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@10.32.0 --activate
+    - pnpm config set store-dir .pnpm-store
+  script:
+    - pnpm install --frozen-lockfile
+    - pnpm typecheck
+    - pnpm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 hour
+
+# Pack the build artifact into a container image and push to Harbor
+publish_to_harbor:
+  stage: publish
+  image: docker:stable
+  services:
+    - docker:dind
+  before_script:
+    # Log in securely into the private Harbor OCI Registry
+    - echo "$HARBOR_PASSWORD" | docker login $HARBOR_REGISTRY -u "$HARBOR_USER" --password-stdin
+  script:
+    # Build container leveraging the Dockerfile
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+    # Tag and push as latest version if running on the default branch
+    - |
+      if [ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]; then
+        docker tag $IMAGE_TAG $IMAGE_LATEST
+        docker push $IMAGE_LATEST
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG

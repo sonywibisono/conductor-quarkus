@@ -25,6 +25,7 @@ import javax.sql.DataSource;
 import org.conductoross.conductor.common.JsonSchemaValidator;
 import org.conductoross.conductor.core.execution.tasks.AnnotatedSystemTaskWorker;
 import org.conductoross.conductor.service.SchemaCacheProperties;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.slf4j.Logger;
@@ -44,7 +45,7 @@ import com.netflix.conductor.core.execution.mapper.TaskMapper;
 import com.netflix.conductor.core.reconciliation.WorkflowRepairService;
 import com.netflix.conductor.dao.WorkflowMessageQueueDAO;
 import com.netflix.conductor.model.TaskModel.Status;
-import com.netflix.conductor.sqlite.config.SqliteProperties;
+// import com.netflix.conductor.sqlite.config.SqliteProperties;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -62,7 +63,12 @@ public class ConductorQuarkusProducers {
 
     private static final Logger log = LoggerFactory.getLogger(ConductorQuarkusProducers.class);
 
-    @Inject DataSource dataSource;
+    @Inject
+    DataSource dataSource;
+
+    @Inject
+    @ConfigProperty(name = "conductor.db.type", defaultValue = "postgresql")
+    String dbType;
 
     void onStart(@Observes StartupEvent ev) {
         log.info("Initializing SQLite database connection and PRAGMAs...");
@@ -79,19 +85,36 @@ public class ConductorQuarkusProducers {
 
         try {
             log.info("Running Flyway migrations for SQLite...");
-            FluentConfiguration config =
-                    Flyway.configure()
-                            .dataSource(dataSource)
-                            .locations("classpath:db/migration_sqlite")
-                            .sqlMigrationPrefix("V")
-                            .sqlMigrationSeparator("__")
-                            .mixed(true)
-                            .validateOnMigrate(true)
-                            .baselineOnMigrate(true)
-                            .baselineVersion("0");
-            Flyway flyway = new Flyway(config);
-            flyway.migrate();
-            log.info("SQLite database migrated successfully!");
+            if ("sqlite".equalsIgnoreCase(dbType)) {
+                // eksekusi PRAGMA dan Flyway db/migration_sqlite
+                FluentConfiguration config = Flyway.configure()
+                        .dataSource(dataSource)
+                        .locations("classpath:db/migration_sqlite")
+                        .sqlMigrationPrefix("V")
+                        .sqlMigrationSeparator("__")
+                        .mixed(true)
+                        .validateOnMigrate(true)
+                        .baselineOnMigrate(true)
+                        .baselineVersion("0");
+                Flyway flyway = new Flyway(config);
+                flyway.migrate();
+                log.info("SQLite database migrated successfully!");
+            } else if ("postgres".equalsIgnoreCase(dbType)) {
+                // eksekusi Flyway db/migration_postgres
+                FluentConfiguration config = Flyway.configure()
+                        .dataSource(dataSource)
+                        .locations("classpath:db/migration_postgres")
+                        .sqlMigrationPrefix("V")
+                        .sqlMigrationSeparator("__")
+                        .mixed(true)
+                        .validateOnMigrate(true)
+                        .baselineOnMigrate(true)
+                        .baselineVersion("0");
+                Flyway flyway = new Flyway(config);
+                flyway.migrate();
+                log.info("PostgreSQL database migrated successfully!");
+            }
+
         } catch (Exception e) {
             log.warn("Flyway migration exception: {}", e.getMessage(), e);
         }
@@ -109,11 +132,11 @@ public class ConductorQuarkusProducers {
         return new ConductorProperties();
     }
 
-    @Produces
-    @Singleton
-    public SqliteProperties sqliteProperties() {
-        return new SqliteProperties();
-    }
+    // @Produces
+    // @Singleton
+    // public SqliteProperties sqliteProperties() {
+    // return new SqliteProperties();
+    // }
 
     @Produces
     @Singleton
@@ -175,7 +198,7 @@ public class ConductorQuarkusProducers {
     @Produces
     @Singleton
     public MeterRegistry[] meterRegistries(MeterRegistry meterRegistry) {
-        return new MeterRegistry[] {meterRegistry};
+        return new MeterRegistry[] { meterRegistry };
     }
 
     @Produces

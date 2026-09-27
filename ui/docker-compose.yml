@@ -1,0 +1,31 @@
+#version: "3.8"
+
+services:
+  conductor-bff:
+    build:
+      context: ../conductor-hub-bff
+      dockerfile: Dockerfile
+    container_name: conductor-hub-bff
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - ../conductor-hub-bff/clusters.data.json:/app/clusters.data.json
+    restart: unless-stopped
+
+  conductor-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: conductor-ui
+    environment:
+      - VITE_USE_BFF=true
+      - VITE_BFF_GATEWAY_URL=http://10.98.9.61:30217
+      - VITE_WF_SERVER=http://10.98.9.61:30087
+    ports:
+      - "1234:80"
+    depends_on:
+      - conductor-bff
+    restart: unless-stopped

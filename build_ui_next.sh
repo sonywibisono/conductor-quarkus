@@ -1,14 +1,14 @@
 #!/bin/sh
-# Build ui-next and copy assets into Quarkus server resource directory.
+# Build ui and copy assets into Quarkus server resource directory.
 set -e
 
-cd ui-next
+cd ui
 pwd
 pnpm install
-pnpm build
-echo "Done building ui-next, copying dist to server"
+NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=4096}" pnpm build
+echo "Done building ui, copying dist to server"
 cd ..
 pwd
 mkdir -p server/src/main/resources/META-INF/resources
 rm -rf server/src/main/resources/META-INF/resources/*
-cp -r ui-next/dist/. server/src/main/resources/META-INF/resources/
+cp -r ui/dist/. server/src/main/resources/META-INF/resources/
