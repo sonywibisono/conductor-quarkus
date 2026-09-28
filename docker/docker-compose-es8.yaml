@@ -21,7 +21,7 @@ services:
       # Shared with host so file:// URIs from the server resolve on the e2e runner.
       - /tmp/conductor-file-storage-e2e:/tmp/conductor-file-storage-e2e
     healthcheck:
-      test: ["CMD", "curl","-I" ,"-XGET", "http://localhost:8080/health"]
+      test: [ "CMD", "curl", "-I", "-XGET", "http://localhost:8080/health" ]
       interval: 60s
       timeout: 30s
       retries: 12
@@ -40,13 +40,13 @@ services:
         max-file: "3"
 
   conductor-redis:
-    image: redis:6.2.3-alpine
+    image: redis:8.2.4-alpine3.22
     volumes:
       - ../server/config/redis.conf:/usr/local/etc/redis/redis.conf
     networks:
       - internal
     healthcheck:
-      test: [ "CMD", "redis-cli","ping" ]
+      test: [ "CMD", "redis-cli", "ping" ]
 
   conductor-elasticsearch:
     # Keep ES image aligned with elasticsearch-java client version (8.19.11).
