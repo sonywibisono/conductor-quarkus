@@ -226,7 +226,7 @@ export default function AiconAgent() {
 
       // Fetch available tools to verify connection
       const toolsResponse = await client.listTools();
-      const toolNames = toolsResponse.tools.map((t) => t.name).join(", ");
+      const toolNames = toolsResponse.tools.map((t: any) => t.name).join(", ");
       
       setMessages((prev) => [
         ...prev,
@@ -301,7 +301,7 @@ export default function AiconAgent() {
       if (clientRef.current && isConnected) {
         try {
           const toolsResponse = await clientRef.current.listTools();
-          const toolData = toolsResponse.tools.map(t => `- ${t.name}: ${t.description}`).join("\n");
+          const toolData = toolsResponse.tools.map((t: any) => `- ${t.name}: ${t.description}`).join("\n");
           setMessages((prev) => [
             ...prev,
             { role: "agent", text: `Here are the available tools:\n${toolData}` }
