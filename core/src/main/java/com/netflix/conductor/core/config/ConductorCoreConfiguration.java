@@ -41,7 +41,6 @@ import com.netflix.conductor.core.listener.TaskStatusListenerStub;
 import com.netflix.conductor.core.listener.WorkflowStatusListener;
 import com.netflix.conductor.core.listener.WorkflowStatusListenerStub;
 import com.netflix.conductor.core.storage.DummyPayloadStorage;
-import com.netflix.conductor.core.sync.Lock;
 import com.netflix.conductor.core.utils.IDGenerator;
 
 import static com.netflix.conductor.core.events.EventQueues.EVENT_QUEUE_PROVIDERS_QUALIFIER;
@@ -52,11 +51,6 @@ import static com.netflix.conductor.core.execution.tasks.SystemTaskRegistry.ASYN
 public class ConductorCoreConfiguration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConductorCoreConfiguration.class);
-
-    @Bean
-    public Lock provideLock() {
-        return new com.netflix.conductor.core.sync.local.LocalOnlyLock();
-    }
 
     @ConditionalOnProperty(
             name = "conductor.external-payload-storage.type",

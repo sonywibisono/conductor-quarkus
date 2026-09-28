@@ -132,11 +132,18 @@ public class ConductorQuarkusProducers {
         return new ConductorProperties();
     }
 
-    // @Produces
-    // @Singleton
-    // public SqliteProperties sqliteProperties() {
-    // return new SqliteProperties();
-    // }
+    @Produces
+    @Singleton
+    public com.netflix.conductor.postgres.config.PostgresProperties postgresProperties() {
+        return new com.netflix.conductor.postgres.config.PostgresProperties();
+    }
+
+    @Produces
+    @Singleton
+    @io.quarkus.arc.DefaultBean
+    public com.netflix.conductor.core.sync.Lock defaultLock() {
+        return new com.netflix.conductor.core.sync.local.LocalOnlyLock();
+    }
 
     @Produces
     @Singleton

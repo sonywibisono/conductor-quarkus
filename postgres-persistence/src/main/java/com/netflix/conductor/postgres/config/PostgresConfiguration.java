@@ -60,7 +60,6 @@ public class PostgresConfiguration {
     }
 
     @Bean(initMethod = "migrate")
-    @PostConstruct
     public Flyway flywayForPrimaryDb() {
         FluentConfiguration config = Flyway.configure();
 
