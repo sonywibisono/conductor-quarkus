@@ -23,12 +23,11 @@ import java.util.concurrent.TimeUnit;
 
 import javax.sql.DataSource;
 
-import org.springframework.retry.support.RetryTemplate;
-
 import com.netflix.conductor.common.metadata.tasks.PollData;
 import com.netflix.conductor.core.exception.NonTransientException;
 import com.netflix.conductor.dao.PollDataDAO;
 import com.netflix.conductor.postgres.config.PostgresProperties;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
@@ -51,7 +50,7 @@ public class PostgresPollDataDAO extends PostgresBaseDAO implements PollDataDAO 
     private boolean useReadCache;
 
     public PostgresPollDataDAO(
-            RetryTemplate retryTemplate,
+            PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             DataSource dataSource,
             PostgresProperties properties) {

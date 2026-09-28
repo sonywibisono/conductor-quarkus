@@ -23,8 +23,6 @@ import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
-import org.springframework.retry.support.RetryTemplate;
-
 import com.netflix.conductor.common.metadata.events.EventExecution;
 import com.netflix.conductor.common.metadata.tasks.TaskDef;
 import com.netflix.conductor.core.exception.NonTransientException;
@@ -37,6 +35,7 @@ import com.netflix.conductor.metrics.Monitors;
 import com.netflix.conductor.model.TaskModel;
 import com.netflix.conductor.model.WorkflowModel;
 import com.netflix.conductor.postgres.util.ExecutorsUtil;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 import com.netflix.conductor.postgres.util.Query;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,7 +51,7 @@ public class PostgresExecutionDAO extends PostgresBaseDAO
     private final QueueDAO queueDAO;
 
     public PostgresExecutionDAO(
-            RetryTemplate retryTemplate,
+            PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             DataSource dataSource,
             QueueDAO queueDAO) {

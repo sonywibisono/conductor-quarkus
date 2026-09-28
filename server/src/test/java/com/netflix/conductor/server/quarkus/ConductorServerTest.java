@@ -30,4 +30,32 @@ public class ConductorServerTest {
     public void testWorkflowMetadataEndpoint() {
         given().when().get("/api/metadata/workflow").then().statusCode(200);
     }
+
+    @Test
+    public void testCreateWorkflowDef() {
+        String name = "test_import_workflow_" + System.currentTimeMillis();
+        String workflowJson =
+                String.format(
+                        """
+        {
+          "name": "%s",
+          "version": 1,
+          "ownerEmail": "test@conductor.example",
+          "tasks": [
+            {
+              "name": "simple_task",
+              "taskReferenceName": "simple_task_ref",
+              "type": "SIMPLE"
+            }
+          ]
+        }
+        """,
+                        name);
+        given().contentType("application/json")
+                .body(workflowJson)
+                .when()
+                .post("/api/metadata/workflow")
+                .then()
+                .statusCode(204);
+    }
 }

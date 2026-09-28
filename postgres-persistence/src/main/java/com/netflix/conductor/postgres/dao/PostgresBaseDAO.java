@@ -25,7 +25,6 @@ import javax.sql.DataSource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.retry.support.RetryTemplate;
 
 import com.netflix.conductor.core.exception.NonTransientException;
 import com.netflix.conductor.postgres.util.*;
@@ -44,10 +43,10 @@ public abstract class PostgresBaseDAO {
     protected final ObjectMapper objectMapper;
     protected final DataSource dataSource;
 
-    private final RetryTemplate retryTemplate;
+    private final PostgresRetryTemplate retryTemplate;
 
     protected PostgresBaseDAO(
-            RetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
+            PostgresRetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
         this.retryTemplate = retryTemplate;
         this.objectMapper = objectMapper;
         this.dataSource = dataSource;
@@ -143,7 +142,7 @@ public abstract class PostgresBaseDAO {
 
     <R> R getWithRetriedTransactions(final TransactionalFunction<R> function) {
         try {
-            return retryTemplate.execute(context -> getWithTransaction(function));
+            return retryTemplate.execute(() -> getWithTransaction(function));
         } catch (Exception e) {
             throw new NonTransientException(e.getMessage(), e);
         }

@@ -62,61 +62,66 @@ public class ConductorQuarkusProducers {
 
     private static final Logger log = LoggerFactory.getLogger(ConductorQuarkusProducers.class);
 
-    @Inject DataSource dataSource;
+    @Inject
+    DataSource dataSource;
 
     @Inject
-    @ConfigProperty(name = "conductor.db.type", defaultValue = "postgresql")
+    @ConfigProperty(name = "conductor.db.type", defaultValue = "postgres")
     String dbType;
 
     void onStart(@Observes StartupEvent ev) {
-        log.info("Initializing SQLite database connection and PRAGMAs...");
-        try (Connection conn = dataSource.getConnection();
-                Statement stmt = conn.createStatement()) {
-            stmt.execute("PRAGMA journal_mode=WAL");
-            stmt.execute("PRAGMA busy_timeout=30000");
-            stmt.execute("PRAGMA foreign_keys=ON");
-            stmt.execute("PRAGMA synchronous=NORMAL");
-            stmt.execute("PRAGMA temp_store=MEMORY");
-        } catch (Exception e) {
-            log.warn("Failed to set SQLite PRAGMAs: {}", e.getMessage());
-        }
+        try (Connection conn = dataSource.getConnection()) {
+            String dbProductName = conn.getMetaData().getDatabaseProductName();
+            log.info("Detected database product: {}", dbProductName);
 
-        try {
-            log.info("Running Flyway migrations for SQLite...");
-            if ("sqlite".equalsIgnoreCase(dbType)) {
-                // eksekusi PRAGMA dan Flyway db/migration_sqlite
-                FluentConfiguration config =
-                        Flyway.configure()
-                                .dataSource(dataSource)
-                                .locations("classpath:db/migration_sqlite")
-                                .sqlMigrationPrefix("V")
-                                .sqlMigrationSeparator("__")
-                                .mixed(true)
-                                .validateOnMigrate(true)
-                                .baselineOnMigrate(true)
-                                .baselineVersion("0");
+            if (dbProductName != null && dbProductName.toLowerCase().contains("sqlite")) {
+                log.info("Initializing SQLite database connection and PRAGMAs...");
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("PRAGMA journal_mode=WAL");
+                    stmt.execute("PRAGMA busy_timeout=30000");
+                    stmt.execute("PRAGMA foreign_keys=ON");
+                    stmt.execute("PRAGMA synchronous=NORMAL");
+                    stmt.execute("PRAGMA temp_store=MEMORY");
+                } catch (Exception e) {
+                    log.warn("Failed to set SQLite PRAGMAs: {}", e.getMessage());
+                }
+
+                log.info("Running Flyway migrations for SQLite...");
+                FluentConfiguration config = Flyway.configure()
+                        .dataSource(dataSource)
+                        .locations("classpath:db/migration_sqlite")
+                        .sqlMigrationPrefix("V")
+                        .sqlMigrationSeparator("__")
+                        .mixed(true)
+                        .validateOnMigrate(true)
+                        .baselineOnMigrate(true)
+                        .baselineVersion("0");
                 Flyway flyway = new Flyway(config);
                 flyway.migrate();
                 log.info("SQLite database migrated successfully!");
-            } else if ("postgres".equalsIgnoreCase(dbType)) {
-                // eksekusi Flyway db/migration_postgres
-                FluentConfiguration config =
-                        Flyway.configure()
-                                .dataSource(dataSource)
-                                .locations("classpath:db/migration_postgres")
-                                .sqlMigrationPrefix("V")
-                                .sqlMigrationSeparator("__")
-                                .mixed(true)
-                                .validateOnMigrate(true)
-                                .baselineOnMigrate(true)
-                                .baselineVersion("0");
+            } else if (dbProductName != null && dbProductName.toLowerCase().contains("postgres")) {
+                log.info("Running Flyway migrations for PostgreSQL...");
+                FluentConfiguration config = Flyway.configure()
+                        .dataSource(dataSource)
+                        .locations(
+                                "classpath:db/migration_postgres",
+                                "classpath:db/migration_postgres_data")
+                        .configuration(
+                                java.util.Map.of(
+                                        "flyway.postgresql.transactional.lock", "false"))
+                        .outOfOrder(true)
+                        .sqlMigrationPrefix("V")
+                        .sqlMigrationSeparator("__")
+                        .mixed(true)
+                        .validateOnMigrate(true)
+                        .baselineOnMigrate(true)
+                        .baselineVersion("0");
                 Flyway flyway = new Flyway(config);
                 flyway.migrate();
                 log.info("PostgreSQL database migrated successfully!");
             }
-
         } catch (Exception e) {
-            log.warn("Flyway migration exception: {}", e.getMessage(), e);
+            log.error("Flyway migration exception: {}", e.getMessage(), e);
         }
     }
 
@@ -205,7 +210,7 @@ public class ConductorQuarkusProducers {
     @Produces
     @Singleton
     public MeterRegistry[] meterRegistries(MeterRegistry meterRegistry) {
-        return new MeterRegistry[] {meterRegistry};
+        return new MeterRegistry[] { meterRegistry };
     }
 
     @Produces

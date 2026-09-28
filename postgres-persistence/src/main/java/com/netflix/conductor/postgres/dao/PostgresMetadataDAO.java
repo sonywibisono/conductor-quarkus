@@ -22,8 +22,6 @@ import java.util.function.Consumer;
 
 import javax.sql.DataSource;
 
-import org.springframework.retry.support.RetryTemplate;
-
 import com.netflix.conductor.common.metadata.events.EventHandler;
 import com.netflix.conductor.common.metadata.tasks.TaskDef;
 import com.netflix.conductor.common.metadata.workflow.WorkflowDef;
@@ -37,6 +35,7 @@ import com.netflix.conductor.metrics.Monitors;
 import com.netflix.conductor.postgres.config.PostgresProperties;
 import com.netflix.conductor.postgres.util.ExecuteFunction;
 import com.netflix.conductor.postgres.util.ExecutorsUtil;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
@@ -50,7 +49,7 @@ public class PostgresMetadataDAO extends PostgresBaseDAO implements MetadataDAO,
     private final ScheduledExecutorService scheduledExecutorService;
 
     public PostgresMetadataDAO(
-            RetryTemplate retryTemplate,
+            PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             DataSource dataSource,
             PostgresProperties properties) {

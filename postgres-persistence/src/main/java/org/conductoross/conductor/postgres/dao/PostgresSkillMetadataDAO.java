@@ -21,9 +21,9 @@ import java.util.Optional;
 import javax.sql.DataSource;
 
 import org.conductoross.conductor.dao.SkillMetadataDAO;
-import org.springframework.retry.support.RetryTemplate;
 
 import com.netflix.conductor.postgres.dao.PostgresBaseDAO;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -71,7 +71,7 @@ public class PostgresSkillMetadataDAO extends PostgresBaseDAO implements SkillMe
             "UPDATE skill_metadata SET is_latest = ? WHERE name = ? AND version = ?";
 
     public PostgresSkillMetadataDAO(
-            RetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
+            PostgresRetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
         super(retryTemplate, objectMapper, dataSource);
     }
 

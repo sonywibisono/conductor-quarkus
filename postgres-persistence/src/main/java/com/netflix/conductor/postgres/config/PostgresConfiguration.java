@@ -12,10 +12,8 @@
  */
 package com.netflix.conductor.postgres.config;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -31,13 +29,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
-import org.springframework.retry.RetryContext;
-import org.springframework.retry.backoff.NoBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
 
 import com.netflix.conductor.dao.QueueDAO;
 import com.netflix.conductor.postgres.dao.*;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.*;
@@ -90,7 +85,7 @@ public class PostgresConfiguration {
     @Bean
     @DependsOn({"flywayForPrimaryDb"})
     public PostgresMetadataDAO postgresMetadataDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             PostgresProperties properties) {
         return new PostgresMetadataDAO(retryTemplate, objectMapper, dataSource, properties);
@@ -99,7 +94,7 @@ public class PostgresConfiguration {
     @Bean
     @DependsOn({"flywayForPrimaryDb"})
     public PostgresExecutionDAO postgresExecutionDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             QueueDAO queueDAO) {
         return new PostgresExecutionDAO(retryTemplate, objectMapper, dataSource, queueDAO);
@@ -108,7 +103,7 @@ public class PostgresConfiguration {
     @Bean
     @DependsOn({"flywayForPrimaryDb"})
     public PostgresPollDataDAO postgresPollDataDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             PostgresProperties properties) {
         return new PostgresPollDataDAO(retryTemplate, objectMapper, dataSource, properties);
@@ -117,7 +112,7 @@ public class PostgresConfiguration {
     @Bean
     @DependsOn({"flywayForPrimaryDb"})
     public QueueDAO postgresQueueDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             PostgresProperties properties) {
         return new PostgresQueueDAO(retryTemplate, objectMapper, dataSource, properties);
@@ -127,7 +122,7 @@ public class PostgresConfiguration {
     @DependsOn({"flywayForPrimaryDb"})
     @ConditionalOnProperty(name = "conductor.indexing.type", havingValue = "postgres")
     public PostgresIndexDAO postgresIndexDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             PostgresProperties properties) {
         return new PostgresIndexDAO(retryTemplate, objectMapper, dataSource, properties);
@@ -139,7 +134,7 @@ public class PostgresConfiguration {
             name = "conductor.workflow-execution-lock.type",
             havingValue = "postgres")
     public PostgresLockDAO postgresLockDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper) {
         return new PostgresLockDAO(retryTemplate, objectMapper, dataSource);
     }
@@ -148,7 +143,7 @@ public class PostgresConfiguration {
     @DependsOn({"flywayForPrimaryDb"})
     @ConditionalOnProperty(name = "conductor.file-storage.enabled", havingValue = "true")
     public PostgresFileMetadataDAO postgresFileMetadataDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper) {
         return new PostgresFileMetadataDAO(retryTemplate, objectMapper, dataSource);
     }
@@ -157,7 +152,7 @@ public class PostgresConfiguration {
     @DependsOn({"flywayForPrimaryDb"})
     @ConditionalOnProperty(name = "conductor.integrations.ai.enabled", havingValue = "true")
     public PostgresSkillMetadataDAO postgresSkillMetadataDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper) {
         return new PostgresSkillMetadataDAO(retryTemplate, objectMapper, dataSource);
     }
@@ -166,7 +161,7 @@ public class PostgresConfiguration {
     @DependsOn({"flywayForPrimaryDb"})
     @ConditionalOnProperty(name = "conductor.integrations.ai.enabled", havingValue = "true")
     public PostgresSkillPackageDAO postgresSkillPackageDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper) {
         return new PostgresSkillPackageDAO(retryTemplate, objectMapper, dataSource);
     }
@@ -174,51 +169,15 @@ public class PostgresConfiguration {
     @Bean
     @DependsOn("flywayForPrimaryDb")
     public SchemaDAO postgresSchemaDAO(
-            @Qualifier("postgresRetryTemplate") RetryTemplate retryTemplate,
+            @Qualifier("postgresRetryTemplate") PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper) {
         return new PostgresSchemaDAO(retryTemplate, objectMapper, dataSource);
     }
 
     @Bean
-    public RetryTemplate postgresRetryTemplate(PostgresProperties properties) {
-        SimpleRetryPolicy retryPolicy = new CustomRetryPolicy();
-        retryPolicy.setMaxAttempts(3);
-
-        RetryTemplate retryTemplate = new RetryTemplate();
-        retryTemplate.setRetryPolicy(retryPolicy);
-        retryTemplate.setBackOffPolicy(new NoBackOffPolicy());
-        return retryTemplate;
-    }
-
-    public static class CustomRetryPolicy extends SimpleRetryPolicy {
-
-        private static final String ER_LOCK_DEADLOCK = "40P01";
-        private static final String ER_SERIALIZATION_FAILURE = "40001";
-
-        @Override
-        public boolean canRetry(final RetryContext context) {
-            final Optional<Throwable> lastThrowable =
-                    Optional.ofNullable(context.getLastThrowable());
-            return lastThrowable
-                    .map(throwable -> super.canRetry(context) && isDeadLockError(throwable))
-                    .orElseGet(() -> super.canRetry(context));
-        }
-
-        private boolean isDeadLockError(Throwable throwable) {
-            SQLException sqlException = findCauseSQLException(throwable);
-            if (sqlException == null) {
-                return false;
-            }
-            return ER_LOCK_DEADLOCK.equals(sqlException.getSQLState())
-                    || ER_SERIALIZATION_FAILURE.equals(sqlException.getSQLState());
-        }
-
-        private SQLException findCauseSQLException(Throwable throwable) {
-            Throwable causeException = throwable;
-            while (null != causeException && !(causeException instanceof SQLException)) {
-                causeException = causeException.getCause();
-            }
-            return (SQLException) causeException;
-        }
+    public PostgresRetryTemplate postgresRetryTemplate(PostgresProperties properties) {
+        int maxAttempts =
+                properties.getDeadlockRetryMax() != null ? properties.getDeadlockRetryMax() : 3;
+        return new PostgresRetryTemplate(maxAttempts);
     }
 }

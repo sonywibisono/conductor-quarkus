@@ -18,9 +18,8 @@ import java.util.concurrent.TimeUnit;
 
 import javax.sql.DataSource;
 
-import org.springframework.retry.support.RetryTemplate;
-
 import com.netflix.conductor.core.sync.Lock;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -31,7 +30,7 @@ public class PostgresLockDAO extends PostgresBaseDAO implements Lock {
             ThreadLocal.withInitial(HashMap::new);
 
     public PostgresLockDAO(
-            RetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
+            PostgresRetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
         super(retryTemplate, objectMapper, dataSource);
     }
 

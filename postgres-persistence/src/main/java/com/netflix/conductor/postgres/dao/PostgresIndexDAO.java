@@ -25,8 +25,6 @@ import java.util.concurrent.TimeUnit;
 
 import javax.sql.DataSource;
 
-import org.springframework.retry.support.RetryTemplate;
-
 import com.netflix.conductor.common.metadata.events.EventExecution;
 import com.netflix.conductor.common.metadata.tasks.TaskExecLog;
 import com.netflix.conductor.common.run.SearchResult;
@@ -37,6 +35,7 @@ import com.netflix.conductor.dao.IndexDAO;
 import com.netflix.conductor.metrics.Monitors;
 import com.netflix.conductor.postgres.config.PostgresProperties;
 import com.netflix.conductor.postgres.util.PostgresIndexQueryBuilder;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -51,7 +50,7 @@ public class PostgresIndexDAO extends PostgresBaseDAO implements IndexDAO {
     private boolean onlyIndexOnStatusChange;
 
     public PostgresIndexDAO(
-            RetryTemplate retryTemplate,
+            PostgresRetryTemplate retryTemplate,
             ObjectMapper objectMapper,
             DataSource dataSource,
             PostgresProperties properties) {

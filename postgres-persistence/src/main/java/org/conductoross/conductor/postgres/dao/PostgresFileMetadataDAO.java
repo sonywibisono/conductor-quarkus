@@ -24,9 +24,9 @@ import org.conductoross.conductor.dao.FileMetadataDAO;
 import org.conductoross.conductor.model.FileModel;
 import org.conductoross.conductor.model.file.FileUploadStatus;
 import org.conductoross.conductor.model.file.StorageType;
-import org.springframework.retry.support.RetryTemplate;
 
 import com.netflix.conductor.postgres.dao.PostgresBaseDAO;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -55,7 +55,7 @@ public class PostgresFileMetadataDAO extends PostgresBaseDAO implements FileMeta
     private static final String SELECT_BY_TASK = "SELECT * FROM file_metadata WHERE task_id = ?";
 
     public PostgresFileMetadataDAO(
-            RetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
+            PostgresRetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
         super(retryTemplate, objectMapper, dataSource);
     }
 

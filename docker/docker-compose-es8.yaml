@@ -4,6 +4,9 @@ services:
       - CONFIG_PROP=config-redis-es8.properties
       - JAVA_OPTS=-Dpolyglot.engine.WarnInterpreterOnly=false
       - conductor.app.ownerEmailMandatory=false
+      - DB_USER=postgres
+      - DB_PASS=sembarang
+      - DB_URL=jdbc:postgresql://docker.host.internal:5432/conductors
     image: conductor:server
     container_name: conductor-server
     build:
@@ -12,6 +15,7 @@ services:
       args:
         YARN_OPTS: ${YARN_OPTS}
         INDEXING_BACKEND: elasticsearch8
+
     networks:
       - internal
     ports:

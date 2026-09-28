@@ -17,9 +17,9 @@ import java.util.Base64;
 import javax.sql.DataSource;
 
 import org.conductoross.conductor.dao.SkillPackageDAO;
-import org.springframework.retry.support.RetryTemplate;
 
 import com.netflix.conductor.postgres.dao.PostgresBaseDAO;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -37,7 +37,7 @@ public class PostgresSkillPackageDAO extends PostgresBaseDAO implements SkillPac
     private static final String DELETE = "DELETE FROM skill_package WHERE handle = ?";
 
     public PostgresSkillPackageDAO(
-            RetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
+            PostgresRetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
         super(retryTemplate, objectMapper, dataSource);
     }
 

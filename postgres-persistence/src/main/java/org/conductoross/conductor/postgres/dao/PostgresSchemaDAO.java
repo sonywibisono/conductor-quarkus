@@ -19,10 +19,10 @@ import java.util.Objects;
 import javax.sql.DataSource;
 
 import org.conductoross.conductor.dao.schema.SchemaDAO;
-import org.springframework.retry.support.RetryTemplate;
 
 import com.netflix.conductor.common.metadata.SchemaDef;
 import com.netflix.conductor.postgres.dao.PostgresBaseDAO;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 import com.netflix.conductor.postgres.util.Query;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,7 +59,7 @@ public class PostgresSchemaDAO extends PostgresBaseDAO implements SchemaDAO {
     private static final String DELETE_BY_NAMES = "DELETE FROM meta_schema_def WHERE name IN (%s)";
 
     public PostgresSchemaDAO(
-            RetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
+            PostgresRetryTemplate retryTemplate, ObjectMapper objectMapper, DataSource dataSource) {
         super(retryTemplate, objectMapper, dataSource);
     }
 

@@ -24,11 +24,11 @@ import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.test.context.ContextConfiguration;
 
 import com.netflix.conductor.common.config.TestObjectMapperConfiguration;
 import com.netflix.conductor.postgres.config.PostgresConfiguration;
+import com.netflix.conductor.postgres.util.PostgresRetryTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -54,7 +54,7 @@ public class PostgresSchemaDAOTest extends SchemaDAOTest {
 
     @Autowired
     @Qualifier("postgresRetryTemplate")
-    private RetryTemplate retryTemplate;
+    private PostgresRetryTemplate retryTemplate;
 
     /**
      * Other tests in this module clean the database between their own cases, which drops the
