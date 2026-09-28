@@ -6,7 +6,7 @@ services:
       - conductor.app.ownerEmailMandatory=false
       - DB_USER=postgres
       - DB_PASS=sembarang
-      - DB_URL=jdbc:postgresql://docker.host.internal:5432/conductors
+      - DB_URL=jdbc:postgresql://host.docker.internal:5432/conductors
     image: conductor:server
     container_name: conductor-server
     build:
