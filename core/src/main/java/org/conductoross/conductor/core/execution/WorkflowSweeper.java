@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -69,6 +70,7 @@ public class WorkflowSweeper extends LifecycleAwareComponent {
     private final Clock clock = Clock.systemDefaultZone();
     private AtomicBoolean stop = new AtomicBoolean(false);
 
+    @Autowired
     public WorkflowSweeper(
             @Qualifier(SWEEPER_EXECUTOR_NAME) Executor sweeperExecutor,
             QueueDAO queueDAO,

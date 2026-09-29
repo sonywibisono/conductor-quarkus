@@ -13,10 +13,12 @@
 package com.netflix.conductor.core.execution.tasks;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -41,7 +43,9 @@ public class SystemTaskWorkerCoordinator {
     private final SystemTaskWorker systemTaskWorker;
     private final String executionNameSpace;
     private final Set<WorkflowSystemTask> asyncSystemTasks;
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
 
+    @Autowired
     public SystemTaskWorkerCoordinator(
             SystemTaskWorker systemTaskWorker,
             ConductorProperties properties,
@@ -53,6 +57,12 @@ public class SystemTaskWorkerCoordinator {
 
     @EventListener(ApplicationReadyEvent.class)
     public void initSystemTaskExecutor() {
+        if (!initialized.compareAndSet(false, true)) {
+            LOGGER.info(
+                    "{} already initialized, skipping duplicate call",
+                    SystemTaskWorkerCoordinator.class.getSimpleName());
+            return;
+        }
         this.asyncSystemTasks.stream()
                 .filter(this::isFromCoordinatorExecutionNameSpace)
                 .forEach(this.systemTaskWorker::startPolling);

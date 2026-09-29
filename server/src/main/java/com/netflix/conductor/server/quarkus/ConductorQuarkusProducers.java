@@ -23,6 +23,7 @@ import java.util.Optional;
 import javax.sql.DataSource;
 
 import org.conductoross.conductor.common.JsonSchemaValidator;
+import org.conductoross.conductor.core.execution.WorkflowSweeper;
 import org.conductoross.conductor.core.execution.tasks.AnnotatedSystemTaskWorker;
 import org.conductoross.conductor.service.SchemaCacheProperties;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -32,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.netflix.conductor.common.config.ObjectMapperProvider;
+import com.netflix.conductor.core.LifecycleAwareComponent;
 import com.netflix.conductor.core.config.ConductorProperties;
 import com.netflix.conductor.core.config.WorkflowMessageQueueProperties;
 import com.netflix.conductor.core.events.EventQueueManager;
@@ -42,6 +44,8 @@ import com.netflix.conductor.core.execution.evaluators.JavascriptEvaluator;
 import com.netflix.conductor.core.execution.evaluators.PythonEvaluator;
 import com.netflix.conductor.core.execution.evaluators.ValueParamEvaluator;
 import com.netflix.conductor.core.execution.mapper.TaskMapper;
+import com.netflix.conductor.core.execution.tasks.SystemTaskWorker;
+import com.netflix.conductor.core.execution.tasks.SystemTaskWorkerCoordinator;
 import com.netflix.conductor.core.reconciliation.WorkflowRepairService;
 import com.netflix.conductor.dao.WorkflowMessageQueueDAO;
 import com.netflix.conductor.model.TaskModel.Status;
@@ -66,10 +70,13 @@ public class ConductorQuarkusProducers {
     DataSource dataSource;
 
     @Inject
-    @ConfigProperty(name = "conductor.db.type", defaultValue = "postgres")
+    @ConfigProperty(name = "conductor.db.type", defaultValue = "redis_standalone")
     String dbType;
 
-    void onStart(@Observes StartupEvent ev) {
+    void onStart(@Observes StartupEvent ev,
+            SystemTaskWorkerCoordinator systemTaskWorkerCoordinator,
+            SystemTaskWorker systemTaskWorker,
+            WorkflowSweeper workflowSweeper) {
         try (Connection conn = dataSource.getConnection()) {
             String dbProductName = conn.getMetaData().getDatabaseProductName();
             log.info("Detected database product: {}", dbProductName);
@@ -123,6 +130,10 @@ public class ConductorQuarkusProducers {
         } catch (Exception e) {
             log.error("Flyway migration exception: {}", e.getMessage(), e);
         }
+        
+        systemTaskWorker.start();
+        workflowSweeper.start();
+        systemTaskWorkerCoordinator.initSystemTaskExecutor();
     }
 
     @Produces

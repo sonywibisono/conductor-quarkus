@@ -119,6 +119,14 @@ Run Conductor Quarkus with an automated Redis HA cluster consisting of 1 Primary
 docker compose -f docker/docker-compose-redis-sentinel.yaml up --build
 ```
 
+### Option E: Tested with Developer
+
+Run Conductor Quarkus with elasticsearch:
+
+```shell
+docker compose -f docker/docker-compose-es8.yaml up --build
+```
+
 ---
 
 # Developing UI (ui) Locally

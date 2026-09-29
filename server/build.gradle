@@ -27,6 +27,7 @@ dependencies {
 
     implementation "org.flywaydb:flyway-database-postgresql:${revFlyway}"
     implementation "org.flywaydb:flyway-core:${revFlyway}"
+    // implementation 'org.springframework:spring-core:6.2.0'
     implementation 'org.springframework.retry:spring-retry'
 
     testImplementation 'io.quarkus:quarkus-junit5'
