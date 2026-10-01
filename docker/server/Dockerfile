@@ -23,6 +23,8 @@ LABEL maintainer="Orkes OSS <oss@orkes.io>"
 COPY . /conductor
 WORKDIR /conductor
 
+ENV QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=50M
+
 RUN if [ "$PREBUILT" = "true" ] || [ -f "/conductor/server/build/quarkus-app/quarkus-run.jar" ]; then \
   echo "Using pre-built Quarkus application artifacts"; \
   else \
@@ -89,7 +91,8 @@ COPY docker/server/nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 WORKDIR /app
 
-ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+#ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Dquarkus.http.limits.max-body-size=50M -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 EXPOSE 8080 5000
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=15s \
