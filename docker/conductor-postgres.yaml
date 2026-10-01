@@ -17,10 +17,10 @@ spec:
     spec:
       containers:
         - name: conductor-server
-          image: harbor-pp.iconpln.co.id/library/conductor:redis-cluster-v1
+          image: harbor-pp.iconpln.co.id/library/conductor:quarkus-v2
           env:
             - name: CONFIG_PROP
-              value: config-redis-sentinel.properties
+              value: config-postgres.properties
           ports:
             - name: api
               containerPort: 8080
@@ -28,8 +28,8 @@ spec:
               containerPort: 5000
           volumeMounts:
             - name: config
-              mountPath: /app/config/config-redis-sentinel.properties
-              subPath: config-redis-sentinel.properties
+              mountPath: /app/config/config-postgres.properties
+              subPath: config-postgres.properties
               readOnly: true
           startupProbe:
             httpGet:
@@ -52,8 +52,8 @@ spec:
             failureThreshold: 3
       volumes:
         - name: config
-          configMap:
-            name: conductor-config
+          secret:
+            secretName: conductor-postgres-config
 ---
 apiVersion: v1
 kind: Service
