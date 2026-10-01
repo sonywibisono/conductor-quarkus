@@ -30,7 +30,7 @@ RUN if [ "$PREBUILT" = "true" ] || [ -f "/conductor/server/build/quarkus-app/qua
   else \
   ./gradlew :conductor-server:quarkusBuild -x test -x spotlessCheck \
   -Dorg.gradle.jvmargs=-Xmx2g \
-  --no-daemon --no-parallel && \
+  --stacktrace --no-daemon --no-parallel && \
   rm -rf /root/.gradle/caches; \
   fi
 
@@ -93,10 +93,6 @@ COPY docker/server/nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 WORKDIR /app
 
-<<<<<<< HEAD
-#ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
-=======
->>>>>>> origin/main
 ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Dquarkus.http.limits.max-body-size=50M -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 EXPOSE 8080 5000
 
