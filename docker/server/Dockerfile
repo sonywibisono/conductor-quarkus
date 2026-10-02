@@ -23,12 +23,14 @@ LABEL maintainer="Orkes OSS <oss@orkes.io>"
 COPY . /conductor
 WORKDIR /conductor
 
+ENV QUARKUS_HTTP_LIMITS_MAX_BODY_SIZE=50M
+
 RUN if [ "$PREBUILT" = "true" ] || [ -f "/conductor/server/build/quarkus-app/quarkus-run.jar" ]; then \
   echo "Using pre-built Quarkus application artifacts"; \
   else \
   ./gradlew :conductor-server:quarkusBuild -x test -x spotlessCheck \
   -Dorg.gradle.jvmargs=-Xmx2g \
-  --no-daemon --no-parallel && \
+  --stacktrace --no-daemon --no-parallel && \
   rm -rf /root/.gradle/caches; \
   fi
 

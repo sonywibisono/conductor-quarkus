@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conductor-server
+  namespace: conductor-quarkus
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: conductor-server
+  template:
+    metadata:
+      labels:
+        app: conductor-server
+    spec:
+      containers:
+        - name: conductor-server
+          image: harbor-pp.iconpln.co.id/library/conductor:quarkus-v2
+          env:
+            - name: CONFIG_PROP
+              value: config-postgres.properties
+          ports:
+            - name: api
+              containerPort: 8080
+            - name: ui
+              containerPort: 5000
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/config-postgres.properties
+              subPath: config-postgres.properties
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /q/health
+              port: api
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /q/health
+              port: api
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: api
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: config
+          secret:
+            secretName: conductor-postgres-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: conductor-server
+  namespace: conductor-quarkus
+spec:
+  type: NodePort
+  selector:
+    app: conductor-server
+  ports:
+    - name: api
+      port: 8080
+      targetPort: api
+      nodePort: 30800
+    - name: ui
+      port: 5000
+      targetPort: ui
+      nodePort: 30505
