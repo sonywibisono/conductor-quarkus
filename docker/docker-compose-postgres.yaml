@@ -9,6 +9,9 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - COHERE_API_KEY=${COHERE_API_KEY:-}
+      - DB_URL=jdbc:postgresql://postgresdb:5432/postgres
+      - DB_USER=conductor
+      - DB_PASS=conductor
     image: conductor:server
     container_name: conductor-server
     build:
@@ -20,7 +23,7 @@ services:
       - internal
     ports:
       - 8080:8080
-      - 5000:5000
+      - 5050:5000
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/q/health" ]
       interval: 30s
@@ -39,7 +42,7 @@ services:
         max-file: "3"
 
   conductor-postgres:
-    image: postgres:16
+    image: postgres:17
     environment:
       - POSTGRES_USER=conductor
       - POSTGRES_PASSWORD=conductor
