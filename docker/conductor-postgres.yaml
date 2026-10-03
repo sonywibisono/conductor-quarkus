@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: conductor-server
-          image: harbor-pp.iconpln.co.id/library/conductor:quarkus-v3
+          image: harbor-pp.iconpln.co.id/library/conductor:quarkus-v6
           env:
             - name: CONFIG_PROP
               value: config-postgres.properties
