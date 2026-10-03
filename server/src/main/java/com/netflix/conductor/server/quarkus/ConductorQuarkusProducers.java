@@ -244,4 +244,22 @@ public class ConductorQuarkusProducers {
             Instance<WorkflowMessageQueueDAO> dao) {
         return dao.isResolvable() ? Optional.of(dao.get()) : Optional.empty();
     }
+
+    void setupSpaRouting(@Observes io.vertx.ext.web.Router router) {
+        router.route()
+                .order(100)
+                .handler(
+                        rc -> {
+                            String path = rc.request().path();
+                            if (rc.request().method() == io.vertx.core.http.HttpMethod.GET
+                                    && !path.startsWith("/api")
+                                    && !path.startsWith("/q")
+                                    && !path.startsWith("/swagger-ui")
+                                    && !path.contains(".")) {
+                                rc.reroute("/index.html");
+                            } else {
+                                rc.next();
+                            }
+                        });
+    }
 }

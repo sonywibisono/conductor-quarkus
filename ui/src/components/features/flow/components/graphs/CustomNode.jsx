@@ -70,7 +70,7 @@ export const CustomNode = (nodeProps) => {
                     height: "100%",
                     position: isSafari ? "relative" : "initial",
                     top: event.y,
-                    left: event.x + 25,
+                    left: event.x,
                   }}
                 >
                   <TaskShape

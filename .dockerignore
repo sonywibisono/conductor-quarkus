@@ -29,7 +29,10 @@
 **/out
 **/target
 **/dist
+!ui/dist
+!ui/dist/**
 !ui-next/dist
+!ui-next/dist/**
 **/coverage
 
 # Python

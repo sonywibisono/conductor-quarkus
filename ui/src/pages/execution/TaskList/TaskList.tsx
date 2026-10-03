@@ -78,7 +78,9 @@ export const TaskList: FunctionComponent<TaskListProps> = ({
     },
     {
       id: "taskName",
-      name: "workflowTask.name",
+      name: "taskName",
+      selector: (row: ExecutionTask) =>
+        row.workflowTask?.name ?? row.taskDefName,
       label: "Task Name",
       tooltip: "The name of the task",
     },
@@ -92,7 +94,9 @@ export const TaskList: FunctionComponent<TaskListProps> = ({
     },
     {
       id: "taskType",
-      name: "workflowTask.type",
+      name: "taskType",
+      selector: (row: ExecutionTask) =>
+        row.workflowTask?.type ?? row.taskType,
       label: "Type",
       minWidth: "100px",
       maxWidth: "200px",

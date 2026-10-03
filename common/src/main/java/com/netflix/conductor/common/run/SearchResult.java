@@ -13,6 +13,9 @@
 package com.netflix.conductor.common.run;
 
 import java.util.List;
+import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 public class SearchResult<T> {
 
@@ -20,12 +23,22 @@ public class SearchResult<T> {
 
     private List<T> results;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Map<String, ?> summary;
+
     public SearchResult() {}
 
     public SearchResult(long totalHits, List<T> results) {
         super();
         this.totalHits = totalHits;
         this.results = results;
+    }
+
+    public SearchResult(long totalHits, List<T> results, Map<String, ?> summary) {
+        super();
+        this.totalHits = totalHits;
+        this.results = results;
+        this.summary = summary;
     }
 
     /**
@@ -54,5 +67,13 @@ public class SearchResult<T> {
      */
     public void setResults(List<T> results) {
         this.results = results;
+    }
+
+    public Map<String, ?> getSummary() {
+        return summary;
+    }
+
+    public void setSummary(Map<String, ?> summary) {
+        this.summary = summary;
     }
 }

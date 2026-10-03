@@ -14,6 +14,7 @@ package com.netflix.conductor.rest.controllers;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -168,26 +169,62 @@ public class WorkflowResource {
                             start,
             final @RequestParam(value = "count", defaultValue = "15", required = false) Integer
                             count,
-            final @RequestParam(value = "status", required = false) List<String> status) {
+            final @RequestParam(value = "status", required = false) String status) {
+        List<String> statusList =
+                StringUtils.isNotBlank(status)
+                        ? Arrays.stream(status.split(","))
+                                .map(String::trim)
+                                .filter(StringUtils::isNotBlank)
+                                .collect(Collectors.toList())
+                        : null;
+        return getExecutionStatusTaskList(workflowId, start, count, statusList);
+    }
+
+    public SearchResult<Task> getExecutionStatusTaskList(
+            String workflowId, Integer start, Integer count, List<String> status) {
         Workflow workflow = workflowService.getExecutionStatus(workflowId, true);
 
-        List<Task> workflowFilteredTasks = workflow.getTasks();
+        List<Task> allTasks =
+                workflow != null && workflow.getTasks() != null
+                        ? workflow.getTasks()
+                        : Collections.emptyList();
+
+        Map<String, Long> summary =
+                allTasks.stream()
+                        .filter(t -> t.getStatus() != null)
+                        .collect(
+                                Collectors.groupingBy(
+                                        t -> t.getStatus().name(), Collectors.counting()));
+
+        List<Task> workflowFilteredTasks = allTasks;
         if (status != null && !status.isEmpty()) {
-            workflowFilteredTasks =
-                    workflow.getTasks().stream()
-                            .filter(
-                                    t ->
-                                            status.stream()
-                                                    .map(String::toUpperCase)
-                                                    .anyMatch(s -> t.getStatus().name().equals(s)))
+            List<String> nonBlankStatuses =
+                    status.stream()
+                            .filter(StringUtils::isNotBlank)
+                            .flatMap(s -> Arrays.stream(s.split(",")))
+                            .map(String::trim)
+                            .filter(StringUtils::isNotBlank)
+                            .map(String::toUpperCase)
                             .collect(Collectors.toList());
+            if (!nonBlankStatuses.isEmpty()) {
+                workflowFilteredTasks =
+                        workflowFilteredTasks.stream()
+                                .filter(
+                                        t ->
+                                                t.getStatus() != null
+                                                        && nonBlankStatuses.contains(
+                                                                t.getStatus().name()))
+                                .collect(Collectors.toList());
+            }
         }
 
         int totalHits = workflowFilteredTasks.size();
-        int fromIndex = Math.min(start, totalHits);
-        int toIndex = Math.min(start + count, totalHits);
+        int startVal = (start != null && start >= 0) ? start : 0;
+        int countVal = (count != null && count > 0) ? count : 15;
+        int fromIndex = Math.min(startVal, totalHits);
+        int toIndex = Math.min(startVal + countVal, totalHits);
         List<Task> requestedSubList = workflowFilteredTasks.subList(fromIndex, toIndex);
-        return new SearchResult<>(totalHits, requestedSubList);
+        return new SearchResult<>(totalHits, requestedSubList, summary);
     }
 
     @PostMapping(value = "/{name}/correlated")

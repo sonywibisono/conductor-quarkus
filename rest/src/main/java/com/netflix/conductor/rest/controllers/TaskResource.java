@@ -13,12 +13,15 @@
 package com.netflix.conductor.rest.controllers;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.conductoross.conductor.model.SignalResponse;
 import org.conductoross.conductor.model.WorkflowSignalReturnStrategy;
 import org.springframework.http.ResponseEntity;
@@ -223,6 +226,15 @@ public class TaskResource {
     @Deprecated
     public Map<String, Integer> size(
             @RequestParam(value = "taskType", required = false) List<String> taskTypes) {
+        if (taskTypes != null) {
+            taskTypes =
+                    taskTypes.stream()
+                            .filter(StringUtils::isNotBlank)
+                            .flatMap(s -> Arrays.stream(s.split(",")))
+                            .map(String::trim)
+                            .filter(StringUtils::isNotBlank)
+                            .collect(Collectors.toList());
+        }
         return taskService.getTaskQueueSizes(taskTypes);
     }
 

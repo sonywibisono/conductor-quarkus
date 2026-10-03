@@ -31,6 +31,7 @@ import com.netflix.conductor.common.metadata.tasks.TaskType;
 import com.netflix.conductor.common.metadata.workflow.RerunWorkflowRequest;
 import com.netflix.conductor.common.metadata.workflow.StartWorkflowRequest;
 import com.netflix.conductor.common.metadata.workflow.WorkflowDef;
+import com.netflix.conductor.common.run.SearchResult;
 import com.netflix.conductor.common.run.Workflow;
 import com.netflix.conductor.model.TaskModel;
 import com.netflix.conductor.model.WorkflowModel;
@@ -381,15 +382,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        null,
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                null,
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -425,15 +427,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        null, // Test auto-generation of requestId
-                        null,
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.BLOCKING_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                null, // Test auto-generation of requestId
+                                null,
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.BLOCKING_WORKFLOW,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -469,15 +472,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        "task1", // Wait until task1 completes
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.BLOCKING_TASK,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                "task1", // Wait until task1 completes
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.BLOCKING_TASK,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -514,15 +518,16 @@ public class WorkflowResourceTest {
 
         // When - task2 completes first
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        "task1,task2", // Multiple task refs
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.BLOCKING_TASK_INPUT,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                "task1,task2", // Multiple task refs
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.BLOCKING_TASK_INPUT,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -570,15 +575,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        null,
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.BLOCKING_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                null,
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.BLOCKING_WORKFLOW,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -611,15 +617,16 @@ public class WorkflowResourceTest {
 
         // When - very short timeout, should timeout immediately
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        "nonExistentTask", // Task that never completes
-                        1, // 1 second timeout
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                "nonExistentTask", // Task that never completes
+                                1, // 1 second timeout
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -652,15 +659,16 @@ public class WorkflowResourceTest {
 
         // When - version 0 should be converted to null
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        0, // Version 0
-                        "req123",
-                        null,
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                0, // Version 0
+                                "req123",
+                                null,
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -700,15 +708,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        null,
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                null,
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -741,15 +750,16 @@ public class WorkflowResourceTest {
 
         // When - waitForSeconds is 0, should default to 10
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        null,
-                        0, // Should default to 10
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                null,
+                                0, // Should default to 10
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -785,15 +795,16 @@ public class WorkflowResourceTest {
 
         // When - wait for task1
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        "task1",
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                "task1",
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then - should not try to fetch sub-workflow since SUB_WORKFLOW task is terminal
         StepVerifier.create(result)
@@ -834,15 +845,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        "task1",
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                "task1",
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then - should complete without trying to fetch null sub-workflow
         StepVerifier.create(result)
@@ -884,15 +896,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        "task1",
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                "task1",
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then - should complete gracefully, ignoring the sub-workflow exception
         StepVerifier.create(result)
@@ -924,15 +937,16 @@ public class WorkflowResourceTest {
 
         // When - taskRefs with spaces around them
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        " task1 , task2 ", // With whitespace
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.BLOCKING_TASK,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                " task1 , task2 ", // With whitespace
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.BLOCKING_TASK,
+                                request));
 
         // Then - should trim and match correctly
         StepVerifier.create(result)
@@ -974,15 +988,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        null,
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                null,
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.TARGET_WORKFLOW,
+                                request));
 
         // Then
         StepVerifier.create(result)
@@ -1045,15 +1060,16 @@ public class WorkflowResourceTest {
 
         // When
         Mono<SignalResponse> result =
-                workflowResource.executeWorkflow(
-                        "testWorkflow",
-                        1,
-                        "req123",
-                        null,
-                        10,
-                        "DURABLE",
-                        WorkflowSignalReturnStrategy.BLOCKING_WORKFLOW,
-                        request);
+                Mono.fromFuture(
+                        workflowResource.executeWorkflow(
+                                "testWorkflow",
+                                1,
+                                "req123",
+                                null,
+                                10,
+                                "DURABLE",
+                                WorkflowSignalReturnStrategy.BLOCKING_WORKFLOW,
+                                request));
 
         // Then - should find the WAIT task in the nested sub-workflow
         StepVerifier.create(result)
@@ -1148,5 +1164,115 @@ public class WorkflowResourceTest {
         task.setStartTime(System.currentTimeMillis());
         task.setUpdateTime(System.currentTimeMillis());
         return task;
+    }
+
+    @Test
+    public void testGetExecutionStatusTaskList_AllTasks() {
+        Workflow workflow = new Workflow();
+        List<Task> tasks = new ArrayList<>();
+        tasks.add(createTask("task1", "SIMPLE", Task.Status.COMPLETED));
+        tasks.add(createTask("task2", "SIMPLE", Task.Status.FAILED));
+        tasks.add(createTask("task3", "SIMPLE", Task.Status.COMPLETED));
+        workflow.setTasks(tasks);
+
+        when(mockWorkflowService.getExecutionStatus("w123", true)).thenReturn(workflow);
+
+        SearchResult<Task> result =
+                workflowResource.getExecutionStatusTaskList("w123", 0, 10, (List<String>) null);
+        assertEquals(3, result.getTotalHits());
+        assertEquals(3, result.getResults().size());
+        assertNotNull(result.getSummary());
+        assertEquals(Long.valueOf(2), result.getSummary().get("COMPLETED"));
+        assertEquals(Long.valueOf(1), result.getSummary().get("FAILED"));
+    }
+
+    @Test
+    public void testGetExecutionStatusTaskList_EmptyStringInStatusList() {
+        Workflow workflow = new Workflow();
+        List<Task> tasks = new ArrayList<>();
+        tasks.add(createTask("task1", "SIMPLE", Task.Status.COMPLETED));
+        tasks.add(createTask("task2", "SIMPLE", Task.Status.IN_PROGRESS));
+        workflow.setTasks(tasks);
+
+        when(mockWorkflowService.getExecutionStatus("w123", true)).thenReturn(workflow);
+
+        // Quarkus binds non-present List<String> @RequestParam to [""] when other query parameters
+        // exist
+        SearchResult<Task> result =
+                workflowResource.getExecutionStatusTaskList("w123", 0, 10, List.of(""));
+        assertEquals(2, result.getTotalHits());
+        assertEquals(2, result.getResults().size());
+        assertEquals(Long.valueOf(1), result.getSummary().get("COMPLETED"));
+        assertEquals(Long.valueOf(1), result.getSummary().get("IN_PROGRESS"));
+    }
+
+    @Test
+    public void testGetExecutionStatusTaskList_WithStatusFilter() {
+        Workflow workflow = new Workflow();
+        List<Task> tasks = new ArrayList<>();
+        tasks.add(createTask("task1", "SIMPLE", Task.Status.COMPLETED));
+        tasks.add(createTask("task2", "SIMPLE", Task.Status.FAILED));
+        tasks.add(createTask("task3", "SIMPLE", Task.Status.COMPLETED));
+        workflow.setTasks(tasks);
+
+        when(mockWorkflowService.getExecutionStatus("w123", true)).thenReturn(workflow);
+
+        SearchResult<Task> result =
+                workflowResource.getExecutionStatusTaskList("w123", 0, 10, List.of("COMPLETED"));
+        assertEquals(2, result.getTotalHits());
+        assertEquals(2, result.getResults().size());
+        assertEquals("task1", result.getResults().get(0).getReferenceTaskName());
+        assertEquals("task3", result.getResults().get(1).getReferenceTaskName());
+    }
+
+    @Test
+    public void testGetExecutionStatusTaskList_WithStringStatusParam() {
+        Workflow workflow = new Workflow();
+        List<Task> tasks = new ArrayList<>();
+        tasks.add(createTask("task1", "SIMPLE", Task.Status.COMPLETED));
+        tasks.add(createTask("task2", "SIMPLE", Task.Status.FAILED));
+        tasks.add(createTask("task3", "SIMPLE", Task.Status.COMPLETED));
+        workflow.setTasks(tasks);
+
+        when(mockWorkflowService.getExecutionStatus("w123", true)).thenReturn(workflow);
+
+        SearchResult<Task> result =
+                workflowResource.getExecutionStatusTaskList("w123", 0, 10, "COMPLETED");
+        assertEquals(2, result.getTotalHits());
+        assertEquals(2, result.getResults().size());
+        assertEquals("task1", result.getResults().get(0).getReferenceTaskName());
+        assertEquals("task3", result.getResults().get(1).getReferenceTaskName());
+    }
+
+    @Test
+    public void testGetExecutionStatusTaskList_WithCommaSeparatedStatus() {
+        Workflow workflow = new Workflow();
+        List<Task> tasks = new ArrayList<>();
+        tasks.add(createTask("task1", "SIMPLE", Task.Status.COMPLETED));
+        tasks.add(createTask("task2", "SIMPLE", Task.Status.FAILED));
+        tasks.add(createTask("task3", "SIMPLE", Task.Status.SCHEDULED));
+        workflow.setTasks(tasks);
+
+        when(mockWorkflowService.getExecutionStatus("w123", true)).thenReturn(workflow);
+
+        SearchResult<Task> result =
+                workflowResource.getExecutionStatusTaskList(
+                        "w123", 0, 10, List.of("COMPLETED,FAILED"));
+        assertEquals(2, result.getTotalHits());
+        assertEquals(2, result.getResults().size());
+    }
+
+    @Test
+    public void testGetExecutionStatusTaskList_NullWorkflowTasks() {
+        Workflow workflow = new Workflow();
+        workflow.setTasks(null);
+
+        when(mockWorkflowService.getExecutionStatus("w123", true)).thenReturn(workflow);
+
+        SearchResult<Task> result =
+                workflowResource.getExecutionStatusTaskList("w123", 0, 10, (List<String>) null);
+        assertEquals(0, result.getTotalHits());
+        assertEquals(0, result.getResults().size());
+        assertTrue(result.getSummary().isEmpty());
     }
 }
