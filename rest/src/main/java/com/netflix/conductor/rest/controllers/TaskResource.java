@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import org.conductoross.conductor.model.SignalResponse;
 import org.conductoross.conductor.model.WorkflowSignalReturnStrategy;
@@ -44,7 +45,6 @@ import com.netflix.conductor.service.WorkflowService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
-import reactor.core.publisher.Mono;
 
 import static com.netflix.conductor.rest.config.RequestMappingConstants.TASKS;
 
@@ -166,7 +166,7 @@ public class TaskResource {
     @Operation(
             summary =
                     "Signal the workflow's currently blocked task synchronously and return the updated workflow per the return strategy")
-    public Mono<SignalResponse> signalWorkflowTaskSync(
+    public CompletableFuture<SignalResponse> signalWorkflowTaskSync(
             @PathVariable("workflowId") String workflowId,
             @PathVariable("status") TaskResult.Status status,
             @RequestParam(
@@ -185,12 +185,13 @@ public class TaskResource {
         }
 
         return WorkflowSignalResponder.awaitSignalResponse(
-                workflowService,
-                workflowId,
-                new String[0],
-                returnStrategy,
-                UUID.randomUUID().toString(),
-                Duration.ofMillis(timeoutMillis));
+                        workflowService,
+                        workflowId,
+                        new String[0],
+                        returnStrategy,
+                        UUID.randomUUID().toString(),
+                        Duration.ofMillis(timeoutMillis))
+                .toFuture();
     }
 
     @PostMapping("/{taskId}/log")

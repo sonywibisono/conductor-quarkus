@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -48,7 +49,6 @@ import com.netflix.conductor.service.WorkflowTestService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.Mono;
 
 import static com.netflix.conductor.rest.config.RequestMappingConstants.WORKFLOW;
 
@@ -94,7 +94,7 @@ public class WorkflowResource {
     @SneakyThrows
     @PostMapping(value = "execute/{name}/{version}", produces = APPLICATION_JSON_VALUE)
     @Operation(summary = "Execute a workflow synchronously")
-    public Mono<SignalResponse> executeWorkflow(
+    public CompletableFuture<SignalResponse> executeWorkflow(
             @PathVariable("name") String name,
             @PathVariable(value = "version", required = false) Integer version,
             @RequestParam(value = "requestId", required = false) String requestId,
@@ -139,12 +139,13 @@ public class WorkflowResource {
                         : new String[0];
 
         return WorkflowSignalResponder.awaitSignalResponse(
-                workflowService,
-                workflowId,
-                taskRefs,
-                returnStrategy,
-                workflowRequestId,
-                Duration.ofSeconds(waitForSeconds));
+                        workflowService,
+                        workflowId,
+                        taskRefs,
+                        returnStrategy,
+                        workflowRequestId,
+                        Duration.ofSeconds(waitForSeconds))
+                .toFuture();
     }
 
     @GetMapping("/{name}/correlated/{correlationId}")

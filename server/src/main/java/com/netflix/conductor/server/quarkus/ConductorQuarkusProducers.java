@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.netflix.conductor.common.config.ObjectMapperProvider;
-import com.netflix.conductor.core.LifecycleAwareComponent;
 import com.netflix.conductor.core.config.ConductorProperties;
 import com.netflix.conductor.core.config.WorkflowMessageQueueProperties;
 import com.netflix.conductor.core.events.EventQueueManager;
@@ -66,14 +65,14 @@ public class ConductorQuarkusProducers {
 
     private static final Logger log = LoggerFactory.getLogger(ConductorQuarkusProducers.class);
 
-    @Inject
-    DataSource dataSource;
+    @Inject DataSource dataSource;
 
     @Inject
     @ConfigProperty(name = "conductor.db.type", defaultValue = "redis_standalone")
     String dbType;
 
-    void onStart(@Observes StartupEvent ev,
+    void onStart(
+            @Observes StartupEvent ev,
             SystemTaskWorkerCoordinator systemTaskWorkerCoordinator,
             SystemTaskWorker systemTaskWorker,
             WorkflowSweeper workflowSweeper) {
@@ -94,35 +93,37 @@ public class ConductorQuarkusProducers {
                 }
 
                 log.info("Running Flyway migrations for SQLite...");
-                FluentConfiguration config = Flyway.configure()
-                        .dataSource(dataSource)
-                        .locations("classpath:db/migration_sqlite")
-                        .sqlMigrationPrefix("V")
-                        .sqlMigrationSeparator("__")
-                        .mixed(true)
-                        .validateOnMigrate(true)
-                        .baselineOnMigrate(true)
-                        .baselineVersion("0");
+                FluentConfiguration config =
+                        Flyway.configure()
+                                .dataSource(dataSource)
+                                .locations("classpath:db/migration_sqlite")
+                                .sqlMigrationPrefix("V")
+                                .sqlMigrationSeparator("__")
+                                .mixed(true)
+                                .validateOnMigrate(true)
+                                .baselineOnMigrate(true)
+                                .baselineVersion("0");
                 Flyway flyway = new Flyway(config);
                 flyway.migrate();
                 log.info("SQLite database migrated successfully!");
             } else if (dbProductName != null && dbProductName.toLowerCase().contains("postgres")) {
                 log.info("Running Flyway migrations for PostgreSQL...");
-                FluentConfiguration config = Flyway.configure()
-                        .dataSource(dataSource)
-                        .locations(
-                                "classpath:db/migration_postgres",
-                                "classpath:db/migration_postgres_data")
-                        .configuration(
-                                java.util.Map.of(
-                                        "flyway.postgresql.transactional.lock", "false"))
-                        .outOfOrder(true)
-                        .sqlMigrationPrefix("V")
-                        .sqlMigrationSeparator("__")
-                        .mixed(true)
-                        .validateOnMigrate(true)
-                        .baselineOnMigrate(true)
-                        .baselineVersion("0");
+                FluentConfiguration config =
+                        Flyway.configure()
+                                .dataSource(dataSource)
+                                .locations(
+                                        "classpath:db/migration_postgres",
+                                        "classpath:db/migration_postgres_data")
+                                .configuration(
+                                        java.util.Map.of(
+                                                "flyway.postgresql.transactional.lock", "false"))
+                                .outOfOrder(true)
+                                .sqlMigrationPrefix("V")
+                                .sqlMigrationSeparator("__")
+                                .mixed(true)
+                                .validateOnMigrate(true)
+                                .baselineOnMigrate(true)
+                                .baselineVersion("0");
                 Flyway flyway = new Flyway(config);
                 flyway.migrate();
                 log.info("PostgreSQL database migrated successfully!");
@@ -130,7 +131,7 @@ public class ConductorQuarkusProducers {
         } catch (Exception e) {
             log.error("Flyway migration exception: {}", e.getMessage(), e);
         }
-        
+
         systemTaskWorker.start();
         workflowSweeper.start();
         systemTaskWorkerCoordinator.initSystemTaskExecutor();
@@ -221,7 +222,7 @@ public class ConductorQuarkusProducers {
     @Produces
     @Singleton
     public MeterRegistry[] meterRegistries(MeterRegistry meterRegistry) {
-        return new MeterRegistry[] { meterRegistry };
+        return new MeterRegistry[] {meterRegistry};
     }
 
     @Produces
