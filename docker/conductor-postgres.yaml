@@ -21,6 +21,8 @@ spec:
           env:
             - name: CONFIG_PROP
               value: config-postgres.properties
+            - name: JAVA_OPTS
+              value: -Xms32g -Xmx32g -XX:+UseZGC -XX:+ZGenerational -XX:+AlwaysPreTouch -XX:+UseStringDeduplication  
           ports:
             - name: api
               containerPort: 8080
