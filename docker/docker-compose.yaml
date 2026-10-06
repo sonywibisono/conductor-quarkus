@@ -6,6 +6,9 @@ services:
       - CONFIG_PROP=config-redis.properties
       - JAVA_OPTS=-Dpolyglot.engine.WarnInterpreterOnly=false
       - conductor.app.ownerEmailMandatory=false
+      - DB_USER=postgres
+      - DB_PASS=sembarang
+      - DB_URL=jdbc:postgresql://host.docker.internal:5432/conductors
     image: conductor:server
     container_name: conductor-server
     build:
@@ -15,7 +18,7 @@ services:
       - internal
     ports:
       - 8080:8080
-      - 5000:5000
+      - 5050:5000
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/q/health" ]
       interval: 30s
@@ -46,7 +49,7 @@ services:
       test: [ "CMD", "redis-cli", "ping" ]
 
   conductor-elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.11
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.11
     environment:
       - "ES_JAVA_OPTS=-Xms512m -Xmx1024m"
       - xpack.security.enabled=false

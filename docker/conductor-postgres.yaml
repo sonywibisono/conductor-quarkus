@@ -23,6 +23,14 @@ spec:
               value: config-postgres.properties
             - name: JAVA_OPTS
               value: -Xms32g -Xmx32g -XX:+UseZGC -XX:+ZGenerational -XX:+AlwaysPreTouch -XX:+UseStringDeduplication  
+            - name: CONDUCTOR_SCRIPT_CONTEXT_POOL_ENABLED
+              value: "true"
+            - name: CONDUCTOR_SCRIPT_CONTEXT_POOL_SIZE
+              value: "50"
+            - name: CONDUCTOR_SCRIPT_SOURCE_CACHE_SIZE
+              value: "200"
+            - name: CONDUCTOR_SCRIPT_MAX_EXECUTION_SECONDS
+              value: "5"  
           ports:
             - name: api
               containerPort: 8080

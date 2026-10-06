@@ -14,6 +14,7 @@ package com.netflix.conductor.server.quarkus;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -145,8 +146,13 @@ public class ConductorQuarkusProducers {
 
     @Produces
     @Singleton
-    public ConductorProperties conductorProperties() {
-        return new ConductorProperties();
+     public ConductorProperties conductorProperties(
+            @ConfigProperty(name = "conductor.app.sweeperThreadCount", defaultValue = "64") int sweeperThreads,
+            @ConfigProperty(name = "conductor.app.sweeperWorkflowPollTimeout", defaultValue = "1000") Duration pollTimeout) {
+        ConductorProperties props = new ConductorProperties();
+        props.setSweeperThreadCount(sweeperThreads);
+        props.setSweeperWorkflowPollTimeout(pollTimeout);
+        return props;
     }
 
     @Produces
