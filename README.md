@@ -32,7 +32,8 @@ This distribution includes **ui**, the modern React 18, Vite, and Material-UI da
 | **Low Memory Footprint** | Optimized CDI Lite runtime via Quarkus ArC with zero Spring runtime container overhead. |
 | **Integrated UI (ui)** | Modern React 18 / Vite UI dashboard served via Nginx in Docker or embedded in Quarkus. |
 | **Live Coding & Dev Mode** | Near-instant hot reload of code and configuration changes via `./gradlew :conductor-server:quarkusDev`. |
-| **Built-in SQLite Persistence** | Zero-configuration local database using Agroal and automated Flyway schema migrations. |
+| **Pluggable Persistence** | Supports PostgreSQL, CouchDB, ClickHouse, and SQLite via build-time CDI switching (`@IfBuildProperty`). |
+| **High-Throughput Indexing** | Supports Elasticsearch (ES6/ES7/ES8) and high-speed columnar ClickHouse indexing. |
 | **Standard Observability** | Native SmallRye Health (`/q/health`), Prometheus metrics (`/q/metrics`), and OpenAPI/Swagger UI (`/q/swagger-ui/`). |
 | **Durable Execution** | Full support for Conductor tasks (`SIMPLE`, `SWITCH`, `DO_WHILE`, `FORK_JOIN`, `SUB_WORKFLOW`, `HTTP`, `INLINE`, etc.). |
 | **Polyglot Workers** | Compatible with all official Conductor SDKs (Java, Python, Go, JavaScript, C#, Ruby, Rust). |
@@ -126,6 +127,82 @@ Run Conductor Quarkus with elasticsearch:
 ```shell
 docker compose -f docker/docker-compose-es8.yaml up --build
 ```
+
+### Option F: CouchDB + ClickHouse Stack
+
+Run Conductor Quarkus with Apache CouchDB for primary document persistence and ClickHouse for columnar execution indexing:
+
+```shell
+docker compose -f docker/docker-compose-couchdb.yaml up --build
+```
+
+---
+
+# Pluggable Persistence & Indexing
+
+Conductor Quarkus supports multiple persistence backends coexisting simultaneously in the codebase. Active implementations are resolved at build time using Quarkus CDI Lite conditional bean loading (`@IfBuildProperty`).
+
+All persistence modules (`postgres-persistence`, `couchdb-persistence`, and `clickhouse-persistence`) are included in `server/build.gradle`, avoiding classpath conflicts or ambiguous dependency exceptions.
+
+### Configuration Matrix
+
+| Persistence Layer | Config Property | Supported Values | Default |
+|---|---|---|---|
+| **Primary Database** | `conductor.db.type` | `postgres`, `couchdb`, `clickhouse`, `sqlite` | `postgres` |
+| **Indexing / Search** | `conductor.indexing.type` | `clickhouse`, `elasticsearch`, `es8`, `es7`, `es6` | `elasticsearch` |
+| **Task Queue** | `conductor.queue.type` | `redis`, `postgres`, `mysql` | `redis` |
+
+### Building with Specific Database Profiles
+
+Build or run Conductor Quarkus with your target database configuration via Gradle system properties:
+
+```shell
+# 1. Default (PostgreSQL Persistence)
+./gradlew :conductor-server:quarkusBuild
+
+# 2. Apache CouchDB Persistence
+./gradlew :conductor-server:quarkusBuild -Dconductor.db.type=couchdb
+
+# 3. ClickHouse Persistence & Indexing
+./gradlew :conductor-server:quarkusBuild -Dconductor.db.type=clickhouse -Dconductor.indexing.type=clickhouse
+
+# 4. CouchDB (Primary) + ClickHouse (Indexing)
+./gradlew :conductor-server:quarkusBuild -Dconductor.db.type=couchdb -Dconductor.indexing.type=clickhouse
+```
+
+Alternatively, set properties in `server/src/main/resources/application.properties` or environment variables:
+
+```properties
+conductor.db.type=couchdb
+conductor.indexing.type=clickhouse
+
+# CouchDB configuration
+couchdb.url=http://localhost:5984
+couchdb.username=admin
+couchdb.password=password
+
+# ClickHouse configuration
+clickhouse.url=jdbc:clickhouse://localhost:8123/default
+clickhouse.user=default
+clickhouse.password=
+```
+
+> A comprehensive throughput and resource comparison between **ClickHouse + CouchDB** and **Elasticsearch + PostgreSQL** is documented in [`conductor_comparison_clickhouse_couchdb_vs_elasticsearch_postgresql.pdf`](conductor_comparison_clickhouse_couchdb_vs_elasticsearch_postgresql.pdf).
+
+---
+
+# Task Queue Architecture (`queue.type`)
+
+In Conductor, `QueueDAO` manages the internal work queue lifecycle: pushing tasks, atomic popping by competing workers, lease renewal via `setUnackTimeout`, and individual message removal via `ack`.
+
+### Supported Queue Implementations
+- **Redis (`conductor.queue.type=redis`)**: Sub-millisecond latency using in-memory sorted sets (`ZSET`) and Lua scripts. Recommended for maximum throughput.
+- **PostgreSQL (`conductor.queue.type=postgres`)**: ACID-compliant queue using `SELECT ... FOR UPDATE SKIP LOCKED` in `conductor-postgres-persistence`. Ideal for environments seeking zero-Redis deployments.
+- **MySQL (`conductor.queue.type=mysql`)**: Database-backed queue with skip locked support.
+
+### Architectural Note on Apache Kafka & ClickHouse for Queuing
+- **Apache Kafka**: Kafka is an immutable, append-only distributed streaming log, not an individual-ack task queue. While Kafka is supported for **Workflow Event Tasks** (`KAFKA_PUBLISH`) and **Event Handlers** (`conductor-kafka-event-queue`), it cannot function as an internal `QueueDAO` due to lack of individual message deletion, native arbitrary delay buckets, and selective unack lease re-queuing.
+- **ClickHouse**: ClickHouse is an OLAP columnar engine optimized for bulk append and analytics. Single-record deletions and mutations (`ALTER TABLE DELETE/UPDATE`) are asynchronous and heavy, making it unsuitable for the high mutation churn of a task queue.
 
 ---
 
@@ -274,8 +351,14 @@ conductor-quarkus/
 ├── server/                      # Quarkus application entry point and CDI producers
 │   └── src/main/java/.../quarkus/
 │       └── ConductorQuarkusProducers.java   # Explicit CDI bean producers
+├── postgres-persistence/        # PostgreSQL DAO implementation (Metadata, Execution, Queue)
+├── couchdb-persistence/         # Apache CouchDB document persistence (Metadata, Execution)
+├── clickhouse-persistence/      # ClickHouse columnar persistence & high-throughput IndexDAO
+├── redis-persistence/           # Redis QueueDAO and execution caching
 ├── sqlite-persistence/          # SQLite DAO implementation with Flyway migrations
-└── ... (pluggable persistence and queue modules)
+├── kafka/                       # Kafka publish workflow task provider (KAFKA_PUBLISH)
+├── kafka-event-queue/           # Kafka event queue integration (ObservableQueue)
+└── ... (pluggable persistence, indexing, and event modules)
 ```
 
 ### Key Differences from Spring Boot Distribution

@@ -1,0 +1,51 @@
+services:
+  conductor-server:
+    environment:
+      - CONFIG_PROP=config-clickhouse.properties
+      - JAVA_OPTS=-Dpolyglot.engine.WarnInterpreterOnly=false
+      - conductor.app.ownerEmailMandatory=false
+      - POSTGRES_USER=sony
+      - POSTGRES_PASSWORD=C0nduct0r4hl1
+      - POSTGRES_URL=jdbc:postgresql://10.14.159.143:5432/conductor_ps
+      - REDIS_HOSTS=10.1.50.168:6379
+      - REDIS_PASSWORD=
+      - CLICKHOUSE_URL=jdbc:clickhouse://host.docker.internal:8123/default
+      - CLICKHOUSE_USERNAME=admin
+      - CLICKHOUSE_PASSWORD=admin123
+      - CLICKHOUSE_SERVER=10.99.20.68
+      - CLICKHOUSE_PORT=8129
+      - CLICKHOUSE_USER=ap2t_olap
+      - CLICKHOUSE_PASSWORD=welcome1
+      - CLICKHOUSE_DB=ap2t_olap
+    image: conductor:quarkus
+    container_name: conductor-server
+    build:
+      context: ../
+      dockerfile: docker/server/Dockerfile
+    networks:
+      - internal
+    ports:
+      - 8080:8080
+      - 5050:5000
+    volumes:
+      # Shared with host so file:// URIs from the server resolve on the e2e runner.
+      - ./server/config/config-clickhouse.properties:/app/config/config-clickhouse.properties
+      
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/q/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "3"
+
+  
+
+
+networks:
+  internal:

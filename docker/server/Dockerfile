@@ -16,7 +16,7 @@
 # ===========================================================================================================
 FROM azul/zulu-openjdk-debian:21 AS builder
 
-ARG PREBUILT=false
+ARG PREBUILT=true
 
 LABEL maintainer="Orkes OSS <oss@orkes.io>"
 
@@ -29,7 +29,8 @@ RUN if [ "$PREBUILT" = "true" ] || [ -f "/conductor/server/build/quarkus-app/qua
   echo "Using pre-built Quarkus application artifacts"; \
   else \
   ./gradlew :conductor-server:quarkusBuild -x test -x spotlessCheck \
-  -Dorg.gradle.jvmargs=-Xmx2g \
+  -Dconductor.db.type=postgres -Dconductor.indexing.type=clickhouse \
+  -Dorg.gradle.jvmargs=-Xmx4g \
   --stacktrace --no-daemon --no-parallel && \
   rm -rf /root/.gradle/caches; \
   fi

@@ -77,65 +77,90 @@ public class ConductorQuarkusProducers {
             SystemTaskWorkerCoordinator systemTaskWorkerCoordinator,
             SystemTaskWorker systemTaskWorker,
             WorkflowSweeper workflowSweeper) {
-        try (Connection conn = dataSource.getConnection()) {
-            String dbProductName = conn.getMetaData().getDatabaseProductName();
-            log.info("Detected database product: {}", dbProductName);
+        if (!"couchdb".equalsIgnoreCase(dbType) && !"clickhouse".equalsIgnoreCase(dbType)) {
+            try (Connection conn = dataSource.getConnection()) {
+                String dbProductName = conn.getMetaData().getDatabaseProductName();
+                log.info("Detected database product: {}", dbProductName);
 
-            if (dbProductName != null && dbProductName.toLowerCase().contains("sqlite")) {
-                log.info("Initializing SQLite database connection and PRAGMAs...");
-                try (Statement stmt = conn.createStatement()) {
-                    stmt.execute("PRAGMA journal_mode=WAL");
-                    stmt.execute("PRAGMA busy_timeout=30000");
-                    stmt.execute("PRAGMA foreign_keys=ON");
-                    stmt.execute("PRAGMA synchronous=NORMAL");
-                    stmt.execute("PRAGMA temp_store=MEMORY");
-                } catch (Exception e) {
-                    log.warn("Failed to set SQLite PRAGMAs: {}", e.getMessage());
+                if (dbProductName != null && dbProductName.toLowerCase().contains("sqlite")) {
+                    log.info("Initializing SQLite database connection and PRAGMAs...");
+                    try (Statement stmt = conn.createStatement()) {
+                        stmt.execute("PRAGMA journal_mode=WAL");
+                        stmt.execute("PRAGMA busy_timeout=30000");
+                        stmt.execute("PRAGMA foreign_keys=ON");
+                        stmt.execute("PRAGMA synchronous=NORMAL");
+                        stmt.execute("PRAGMA temp_store=MEMORY");
+                    } catch (Exception e) {
+                        log.warn("Failed to set SQLite PRAGMAs: {}", e.getMessage());
+                    }
+
+                    log.info("Running Flyway migrations for SQLite...");
+                    FluentConfiguration config =
+                            Flyway.configure()
+                                    .dataSource(dataSource)
+                                    .locations("classpath:db/migration_sqlite")
+                                    .sqlMigrationPrefix("V")
+                                    .sqlMigrationSeparator("__")
+                                    .mixed(true)
+                                    .validateOnMigrate(true)
+                                    .baselineOnMigrate(true)
+                                    .baselineVersion("0");
+                    Flyway flyway = new Flyway(config);
+                    flyway.migrate();
+                    log.info("SQLite database migrated successfully!");
+                } else if (dbProductName != null
+                        && dbProductName.toLowerCase().contains("postgres")) {
+                    log.info("Running Flyway migrations for PostgreSQL...");
+                    FluentConfiguration config =
+                            Flyway.configure()
+                                    .dataSource(dataSource)
+                                    .locations(
+                                            "classpath:db/migration_postgres",
+                                            "classpath:db/migration_postgres_data")
+                                    .configuration(
+                                            java.util.Map.of(
+                                                    "flyway.postgresql.transactional.lock",
+                                                    "false"))
+                                    .outOfOrder(true)
+                                    .sqlMigrationPrefix("V")
+                                    .sqlMigrationSeparator("__")
+                                    .mixed(true)
+                                    .validateOnMigrate(true)
+                                    .baselineOnMigrate(true)
+                                    .baselineVersion("0");
+                    Flyway flyway = new Flyway(config);
+                    flyway.migrate();
+                    log.info("PostgreSQL database migrated successfully!");
                 }
-
-                log.info("Running Flyway migrations for SQLite...");
-                FluentConfiguration config =
-                        Flyway.configure()
-                                .dataSource(dataSource)
-                                .locations("classpath:db/migration_sqlite")
-                                .sqlMigrationPrefix("V")
-                                .sqlMigrationSeparator("__")
-                                .mixed(true)
-                                .validateOnMigrate(true)
-                                .baselineOnMigrate(true)
-                                .baselineVersion("0");
-                Flyway flyway = new Flyway(config);
-                flyway.migrate();
-                log.info("SQLite database migrated successfully!");
-            } else if (dbProductName != null && dbProductName.toLowerCase().contains("postgres")) {
-                log.info("Running Flyway migrations for PostgreSQL...");
-                FluentConfiguration config =
-                        Flyway.configure()
-                                .dataSource(dataSource)
-                                .locations(
-                                        "classpath:db/migration_postgres",
-                                        "classpath:db/migration_postgres_data")
-                                .configuration(
-                                        java.util.Map.of(
-                                                "flyway.postgresql.transactional.lock", "false"))
-                                .outOfOrder(true)
-                                .sqlMigrationPrefix("V")
-                                .sqlMigrationSeparator("__")
-                                .mixed(true)
-                                .validateOnMigrate(true)
-                                .baselineOnMigrate(true)
-                                .baselineVersion("0");
-                Flyway flyway = new Flyway(config);
-                flyway.migrate();
-                log.info("PostgreSQL database migrated successfully!");
+            } catch (Exception e) {
+                log.error("Flyway migration exception: {}", e.getMessage(), e);
             }
-        } catch (Exception e) {
-            log.error("Flyway migration exception: {}", e.getMessage(), e);
         }
 
         systemTaskWorker.start();
         workflowSweeper.start();
         systemTaskWorkerCoordinator.initSystemTaskExecutor();
+    }
+
+    @Produces
+    @Singleton
+    @io.quarkus.arc.DefaultBean
+    public com.netflix.conductor.dao.IndexDAO defaultIndexDAO() {
+        return new com.netflix.conductor.core.index.NoopIndexDAO();
+    }
+
+    @Produces
+    @Singleton
+    @io.quarkus.arc.DefaultBean
+    public com.netflix.conductor.dao.QueueDAO defaultQueueDAO() {
+        return new LocalInMemoryQueueDAO();
+    }
+
+    @Produces
+    @Singleton
+    @io.quarkus.arc.DefaultBean
+    public org.conductoross.conductor.dao.schema.SchemaDAO defaultSchemaDAO() {
+        return new org.conductoross.conductor.dao.schema.InMemorySchemaDAO();
     }
 
     @Produces
@@ -146,9 +171,13 @@ public class ConductorQuarkusProducers {
 
     @Produces
     @Singleton
-     public ConductorProperties conductorProperties(
-            @ConfigProperty(name = "conductor.app.sweeperThreadCount", defaultValue = "64") int sweeperThreads,
-            @ConfigProperty(name = "conductor.app.sweeperWorkflowPollTimeout", defaultValue = "1000") Duration pollTimeout) {
+    public ConductorProperties conductorProperties(
+            @ConfigProperty(name = "conductor.app.sweeperThreadCount", defaultValue = "64")
+                    int sweeperThreads,
+            @ConfigProperty(
+                            name = "conductor.app.sweeperWorkflowPollTimeout",
+                            defaultValue = "1000")
+                    Duration pollTimeout) {
         ConductorProperties props = new ConductorProperties();
         props.setSweeperThreadCount(sweeperThreads);
         props.setSweeperWorkflowPollTimeout(pollTimeout);
@@ -267,5 +296,121 @@ public class ConductorQuarkusProducers {
                                 rc.next();
                             }
                         });
+    }
+
+    static class LocalInMemoryQueueDAO implements com.netflix.conductor.dao.QueueDAO {
+        private final java.util.concurrent.ConcurrentHashMap<
+                        String, java.util.concurrent.LinkedBlockingDeque<String>>
+                queues = new java.util.concurrent.ConcurrentHashMap<>();
+
+        private java.util.concurrent.LinkedBlockingDeque<String> q(String name) {
+            return queues.computeIfAbsent(
+                    name, k -> new java.util.concurrent.LinkedBlockingDeque<>());
+        }
+
+        @Override
+        public void push(String queueName, String id, long offsetTimeInSecond) {
+            q(queueName).addLast(id);
+        }
+
+        @Override
+        public void push(String queueName, String id, int priority, long offsetTimeInSecond) {
+            q(queueName).addLast(id);
+        }
+
+        @Override
+        public void push(
+                String queueName,
+                java.util.List<com.netflix.conductor.core.events.queue.Message> messages) {
+            messages.forEach(m -> q(queueName).addLast(m.getId()));
+        }
+
+        @Override
+        public boolean pushIfNotExists(String queueName, String id, long offsetTimeInSecond) {
+            var queue = q(queueName);
+            if (queue.contains(id)) return false;
+            queue.addLast(id);
+            return true;
+        }
+
+        @Override
+        public boolean pushIfNotExists(
+                String queueName, String id, int priority, long offsetTimeInSecond) {
+            return pushIfNotExists(queueName, id, offsetTimeInSecond);
+        }
+
+        @Override
+        public java.util.List<String> pop(String queueName, int count, int timeout) {
+            var queue = q(queueName);
+            java.util.List<String> result = new java.util.ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                String id = queue.poll();
+                if (id == null) break;
+                result.add(id);
+            }
+            if (result.isEmpty() && timeout > 0) {
+                try {
+                    String id =
+                            queue.poll(
+                                    Math.min(timeout, 200),
+                                    java.util.concurrent.TimeUnit.MILLISECONDS);
+                    if (id != null) result.add(id);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public java.util.List<com.netflix.conductor.core.events.queue.Message> pollMessages(
+                String queueName, int count, int timeout) {
+            return pop(queueName, count, timeout).stream()
+                    .map(id -> new com.netflix.conductor.core.events.queue.Message(id, id, null))
+                    .toList();
+        }
+
+        @Override
+        public void remove(String queueName, String messageId) {
+            q(queueName).remove(messageId);
+        }
+
+        @Override
+        public int getSize(String queueName) {
+            return q(queueName).size();
+        }
+
+        @Override
+        public boolean ack(String queueName, String messageId) {
+            return q(queueName).remove(messageId);
+        }
+
+        @Override
+        public boolean setUnackTimeout(String queueName, String messageId, long unackTimeout) {
+            return true;
+        }
+
+        @Override
+        public void flush(String queueName) {
+            q(queueName).clear();
+        }
+
+        @Override
+        public boolean resetOffsetTime(String queueName, String id) {
+            return true;
+        }
+
+        @Override
+        public java.util.Map<String, Long> queuesDetail() {
+            java.util.Map<String, Long> map = new java.util.HashMap<>();
+            queues.forEach((k, v) -> map.put(k, (long) v.size()));
+            return map;
+        }
+
+        @Override
+        public java.util.Map<String, java.util.Map<String, java.util.Map<String, Long>>>
+                queuesDetailVerbose() {
+            return java.util.Collections.emptyMap();
+        }
     }
 }

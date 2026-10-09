@@ -24,6 +24,7 @@
 
 # Build outputs (keep source in docker build)
 **/build
+!server/build
 !server/build/quarkus-app
 !server/build/quarkus-app/**
 **/out

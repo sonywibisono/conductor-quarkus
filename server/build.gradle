@@ -22,6 +22,8 @@ dependencies {
     implementation project(':conductor-rest')
     // implementation project(':conductor-sqlite-persistence')
     implementation project(':conductor-postgres-persistence')
+    implementation project(':conductor-couchdb-persistence')
+    implementation project(':conductor-clickhouse-persistence')
     implementation project(':conductor-redis-configuration')
     implementation project(':conductor-redis-persistence')
 

@@ -1,0 +1,46 @@
+services:
+  conductor-server:
+    environment:
+      - CONFIG_PROP=config-couchdb.properties
+      - JAVA_OPTS=-Dpolyglot.engine.WarnInterpreterOnly=false
+      - conductor.app.ownerEmailMandatory=false
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=sembarang
+      - POSTGRES_URL=jdbc:postgresql://host.docker.internal:5432/conductors
+      - COUCHDB_URL=http://couchdb:5984
+      - COUCHDB_USERNAME=admin
+      - COUCHDB_PASSWORD=8dHZPFLFGoPXuC
+      - REDIS_HOSTS=10.1.50.168:6379
+      - REDIS_PASSWORD=
+    image: conductor:quarkus
+    container_name: conductor-server
+    build:
+      context: ../
+      dockerfile: docker/server/Dockerfile
+    networks:
+      - internal
+    ports:
+      - 8080:8080
+      - 5050:5000
+    volumes:
+      # Shared with host so file:// URIs from the server resolve on the e2e runner.
+      - ./server/config/config-couchdb.properties:/app/config/config-couchdb.properties
+      
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/q/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "3"
+
+  
+
+
+networks:
+  internal:
