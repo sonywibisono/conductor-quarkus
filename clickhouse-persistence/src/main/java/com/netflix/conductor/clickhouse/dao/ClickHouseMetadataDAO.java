@@ -37,6 +37,8 @@ public class ClickHouseMetadataDAO implements MetadataDAO, EventHandlerDAO {
     private final ClickHouseProperties properties;
     private final ObjectMapper objectMapper;
     private final Map<String, TaskDef> taskDefCache = new ConcurrentHashMap<>();
+    private volatile Boolean taskDefHasVersionEpoch = null;
+    private volatile Boolean workflowDefHasVersionEpoch = null;
 
     public ClickHouseMetadataDAO(ClickHouseProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
@@ -49,7 +51,42 @@ public class ClickHouseMetadataDAO implements MetadataDAO, EventHandlerDAO {
                 properties.getUrl(), properties.getUsername(), properties.getPassword());
     }
 
+    private boolean checkColumnExists(Connection conn, String table, String column) {
+        try (PreparedStatement ps =
+                conn.prepareStatement(
+                        "SELECT count() FROM system.columns WHERE database = currentDatabase() AND table = ? AND name = ?")) {
+            ps.setString(1, table);
+            ps.setString(2, column);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.debug(
+                    "Could not verify column {} on table {}: {}", column, table, e.getMessage());
+        }
+        return false;
+    }
+
+    private boolean hasTaskDefVersionEpoch(Connection conn) {
+        if (taskDefHasVersionEpoch == null) {
+            taskDefHasVersionEpoch = checkColumnExists(conn, "meta_task_def", "version_epoch");
+        }
+        return taskDefHasVersionEpoch;
+    }
+
+    private boolean hasWorkflowDefVersionEpoch(Connection conn) {
+        if (workflowDefHasVersionEpoch == null) {
+            workflowDefHasVersionEpoch =
+                    checkColumnExists(conn, "meta_workflow_def", "version_epoch");
+        }
+        return workflowDefHasVersionEpoch;
+    }
+
     private void initTables() {
+        com.netflix.conductor.clickhouse.util.ClickHouseInitializer.ensureDatabaseExists(
+                properties);
         try (Connection conn = getConnection();
                 Statement stmt = conn.createStatement()) {
             stmt.execute(
@@ -68,6 +105,23 @@ public class ClickHouseMetadataDAO implements MetadataDAO, EventHandlerDAO {
                             + "version_epoch Int64"
                             + ") ENGINE = ReplacingMergeTree(version_epoch) "
                             + "ORDER BY (name, version)");
+
+            // If tables were pre-created by V1 migration scripts without version_epoch, try to add
+            // it
+            try {
+                stmt.execute(
+                        "ALTER TABLE meta_task_def ADD COLUMN IF NOT EXISTS version_epoch Int64 DEFAULT 0");
+            } catch (Exception e) {
+                LOGGER.debug("Could not add version_epoch to meta_task_def: {}", e.getMessage());
+            }
+
+            try {
+                stmt.execute(
+                        "ALTER TABLE meta_workflow_def ADD COLUMN IF NOT EXISTS version_epoch Int64 DEFAULT 0");
+            } catch (Exception e) {
+                LOGGER.debug(
+                        "Could not add version_epoch to meta_workflow_def: {}", e.getMessage());
+            }
         } catch (Exception e) {
             LOGGER.warn("ClickHouse metadata tables initialization: {}", e.getMessage());
         }
@@ -81,14 +135,21 @@ public class ClickHouseMetadataDAO implements MetadataDAO, EventHandlerDAO {
     @Override
     public TaskDef updateTaskDef(TaskDef taskDef) {
         taskDef.setUpdateTime(System.currentTimeMillis());
-        String sql = "INSERT INTO meta_task_def (name, json_data, version_epoch) VALUES (?, ?, ?)";
-        try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, taskDef.getName());
-            ps.setString(2, objectMapper.writeValueAsString(taskDef));
-            ps.setLong(3, System.currentTimeMillis());
-            ps.executeUpdate();
-            taskDefCache.put(taskDef.getName(), taskDef);
+        try (Connection conn = getConnection()) {
+            boolean hasVersion = hasTaskDefVersionEpoch(conn);
+            String sql =
+                    hasVersion
+                            ? "INSERT INTO meta_task_def (name, json_data, version_epoch) VALUES (?, ?, ?)"
+                            : "INSERT INTO meta_task_def (name, json_data) VALUES (?, ?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, taskDef.getName());
+                ps.setString(2, objectMapper.writeValueAsString(taskDef));
+                if (hasVersion) {
+                    ps.setLong(3, System.currentTimeMillis());
+                }
+                ps.executeUpdate();
+                taskDefCache.put(taskDef.getName(), taskDef);
+            }
         } catch (Exception e) {
             LOGGER.error("Failed to save TaskDef {}", taskDef.getName(), e);
         }
@@ -157,15 +218,21 @@ public class ClickHouseMetadataDAO implements MetadataDAO, EventHandlerDAO {
     @Override
     public void updateWorkflowDef(WorkflowDef def) {
         def.setUpdateTime(System.currentTimeMillis());
-        String sql =
-                "INSERT INTO meta_workflow_def (name, version, json_data, version_epoch) VALUES (?, ?, ?, ?)";
-        try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, def.getName());
-            ps.setInt(2, def.getVersion());
-            ps.setString(3, objectMapper.writeValueAsString(def));
-            ps.setLong(4, System.currentTimeMillis());
-            ps.executeUpdate();
+        try (Connection conn = getConnection()) {
+            boolean hasVersion = hasWorkflowDefVersionEpoch(conn);
+            String sql =
+                    hasVersion
+                            ? "INSERT INTO meta_workflow_def (name, version, json_data, version_epoch) VALUES (?, ?, ?, ?)"
+                            : "INSERT INTO meta_workflow_def (name, version, json_data) VALUES (?, ?, ?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, def.getName());
+                ps.setInt(2, def.getVersion());
+                ps.setString(3, objectMapper.writeValueAsString(def));
+                if (hasVersion) {
+                    ps.setLong(4, System.currentTimeMillis());
+                }
+                ps.executeUpdate();
+            }
         } catch (Exception e) {
             LOGGER.error("Failed to save WorkflowDef {}:{}", def.getName(), def.getVersion(), e);
         }

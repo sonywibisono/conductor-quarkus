@@ -33,6 +33,10 @@ public class RedisQueueConfiguration {
     @Bean
     @Primary
     @ConditionalOnProperty(name = "conductor.queue.type", havingValue = "redis_standalone")
+    @io.quarkus.arc.properties.IfBuildProperty(
+            name = "conductor.queue.type",
+            stringValue = "redis_standalone",
+            enableIfMissing = true)
     public QueueDAO getQueueDAO(
             RedisProperties redisProperties,
             ConductorProperties properties,
@@ -43,6 +47,9 @@ public class RedisQueueConfiguration {
     @Bean
     @Primary
     @ConditionalOnProperty(name = "conductor.queue.type", havingValue = "redis_sentinel")
+    @io.quarkus.arc.properties.IfBuildProperty(
+            name = "conductor.queue.type",
+            stringValue = "redis_sentinel")
     public QueueDAO getSentinelQueueDAO(
             RedisProperties redisProperties,
             ConductorProperties properties,
@@ -53,6 +60,9 @@ public class RedisQueueConfiguration {
     @Bean
     @Primary
     @ConditionalOnProperty(name = "conductor.queue.type", havingValue = "redis_cluster")
+    @io.quarkus.arc.properties.IfBuildProperty(
+            name = "conductor.queue.type",
+            stringValue = "redis_cluster")
     public QueueDAO getClusterQueueDAO(
             RedisProperties redisProperties,
             ConductorProperties properties,

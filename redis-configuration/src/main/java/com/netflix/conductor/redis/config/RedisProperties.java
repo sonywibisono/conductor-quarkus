@@ -33,6 +33,44 @@ public class RedisProperties {
     @Autowired
     public RedisProperties(ConductorProperties conductorProperties) {
         this.conductorProperties = conductorProperties;
+        initFromQuarkusConfig();
+    }
+
+    public RedisProperties() {
+        this.conductorProperties = new ConductorProperties();
+        initFromQuarkusConfig();
+    }
+
+    private void initFromQuarkusConfig() {
+        try {
+            org.eclipse.microprofile.config.Config config =
+                    org.eclipse.microprofile.config.ConfigProvider.getConfig();
+            this.hosts =
+                    config.getOptionalValue("conductor.redis.hosts", String.class)
+                            .or(
+                                    () ->
+                                            config.getOptionalValue(
+                                                    "workflow.dynomite.cluster.hosts",
+                                                    String.class))
+                            .or(() -> config.getOptionalValue("REDIS_HOSTS", String.class))
+                            .orElse(this.hosts);
+            config.getOptionalValue("conductor.redis.workflowNamespacePrefix", String.class)
+                    .ifPresent(this::setWorkflowNamespacePrefix);
+            config.getOptionalValue("conductor.redis.queueNamespacePrefix", String.class)
+                    .ifPresent(this::setQueueNamespacePrefix);
+            config.getOptionalValue("conductor.redis.database", Integer.class)
+                    .ifPresent(this::setDatabase);
+            config.getOptionalValue("conductor.redis.dataCenterRegion", String.class)
+                    .ifPresent(this::setDataCenterRegion);
+            config.getOptionalValue("conductor.redis.availabilityZone", String.class)
+                    .ifPresent(this::setAvailabilityZone);
+            config.getOptionalValue("conductor.redis.clusterName", String.class)
+                    .ifPresent(this::setClusterName);
+            config.getOptionalValue("conductor.redis.sentinel-master-name", String.class)
+                    .ifPresent(this::setSentinelMasterName);
+            config.getOptionalValue("conductor.redis.ssl", Boolean.class).ifPresent(this::setSsl);
+        } catch (Throwable ignored) {
+        }
     }
 
     /**
@@ -253,7 +291,22 @@ public class RedisProperties {
     }
 
     public String getHosts() {
-        return hosts;
+        if (hosts != null) {
+            return hosts;
+        }
+        try {
+            org.eclipse.microprofile.config.Config config =
+                    org.eclipse.microprofile.config.ConfigProvider.getConfig();
+            return config.getOptionalValue("conductor.redis.hosts", String.class)
+                    .or(
+                            () ->
+                                    config.getOptionalValue(
+                                            "workflow.dynomite.cluster.hosts", String.class))
+                    .or(() -> config.getOptionalValue("REDIS_HOSTS", String.class))
+                    .orElse(hosts);
+        } catch (Throwable ignored) {
+            return hosts;
+        }
     }
 
     public void setHosts(String hosts) {

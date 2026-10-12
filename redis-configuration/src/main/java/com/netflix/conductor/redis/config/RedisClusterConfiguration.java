@@ -41,6 +41,9 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 @Configuration(proxyBeanMethods = false)
 @Conditional(RedisClusterCondition.class)
+@io.quarkus.arc.properties.IfBuildProperty(
+        name = "conductor.db.type",
+        stringValue = "redis_cluster")
 @Slf4j
 public class RedisClusterConfiguration extends RedisConfiguration {
 

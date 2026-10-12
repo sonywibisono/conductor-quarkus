@@ -66,7 +66,8 @@ public class ConductorQuarkusProducers {
 
     private static final Logger log = LoggerFactory.getLogger(ConductorQuarkusProducers.class);
 
-    @Inject DataSource dataSource;
+    @Inject Instance<DataSource> dataSource;
+    @Inject Instance<com.netflix.conductor.dao.IndexDAO> indexDao;
 
     @Inject
     @ConfigProperty(name = "conductor.db.type", defaultValue = "redis_standalone")
@@ -77,63 +78,82 @@ public class ConductorQuarkusProducers {
             SystemTaskWorkerCoordinator systemTaskWorkerCoordinator,
             SystemTaskWorker systemTaskWorker,
             WorkflowSweeper workflowSweeper) {
-        if (!"couchdb".equalsIgnoreCase(dbType) && !"clickhouse".equalsIgnoreCase(dbType)) {
-            try (Connection conn = dataSource.getConnection()) {
-                String dbProductName = conn.getMetaData().getDatabaseProductName();
-                log.info("Detected database product: {}", dbProductName);
+        if ("postgres".equalsIgnoreCase(dbType)
+                || "sqlite".equalsIgnoreCase(dbType)
+                || "mysql".equalsIgnoreCase(dbType)) {
+            if (dataSource.isResolvable()) {
+                DataSource ds = dataSource.get();
+                try (Connection conn = ds.getConnection()) {
+                    String dbProductName = conn.getMetaData().getDatabaseProductName();
+                    log.info("Detected database product: {}", dbProductName);
 
-                if (dbProductName != null && dbProductName.toLowerCase().contains("sqlite")) {
-                    log.info("Initializing SQLite database connection and PRAGMAs...");
-                    try (Statement stmt = conn.createStatement()) {
-                        stmt.execute("PRAGMA journal_mode=WAL");
-                        stmt.execute("PRAGMA busy_timeout=30000");
-                        stmt.execute("PRAGMA foreign_keys=ON");
-                        stmt.execute("PRAGMA synchronous=NORMAL");
-                        stmt.execute("PRAGMA temp_store=MEMORY");
-                    } catch (Exception e) {
-                        log.warn("Failed to set SQLite PRAGMAs: {}", e.getMessage());
+                    if (dbProductName != null && dbProductName.toLowerCase().contains("sqlite")) {
+                        log.info("Initializing SQLite database connection and PRAGMAs...");
+                        try (Statement stmt = conn.createStatement()) {
+                            stmt.execute("PRAGMA journal_mode=WAL");
+                            stmt.execute("PRAGMA busy_timeout=30000");
+                            stmt.execute("PRAGMA foreign_keys=ON");
+                            stmt.execute("PRAGMA synchronous=NORMAL");
+                            stmt.execute("PRAGMA temp_store=MEMORY");
+                        } catch (Exception e) {
+                            log.warn("Failed to set SQLite PRAGMAs: {}", e.getMessage());
+                        }
+
+                        log.info("Running Flyway migrations for SQLite...");
+                        FluentConfiguration config =
+                                Flyway.configure()
+                                        .dataSource(ds)
+                                        .locations("classpath:db/migration_sqlite")
+                                        .sqlMigrationPrefix("V")
+                                        .sqlMigrationSeparator("__")
+                                        .mixed(true)
+                                        .validateOnMigrate(true)
+                                        .baselineOnMigrate(true)
+                                        .baselineVersion("0");
+                        Flyway flyway = new Flyway(config);
+                        flyway.migrate();
+                        log.info("SQLite database migrated successfully!");
+                    } else if (dbProductName != null
+                            && dbProductName.toLowerCase().contains("postgres")) {
+                        log.info("Running Flyway migrations for PostgreSQL...");
+                        FluentConfiguration config =
+                                Flyway.configure()
+                                        .dataSource(ds)
+                                        .locations(
+                                                "classpath:db/migration_postgres",
+                                                "classpath:db/migration_postgres_data")
+                                        .configuration(
+                                                java.util.Map.of(
+                                                        "flyway.postgresql.transactional.lock",
+                                                        "false"))
+                                        .outOfOrder(true)
+                                        .sqlMigrationPrefix("V")
+                                        .sqlMigrationSeparator("__")
+                                        .mixed(true)
+                                        .validateOnMigrate(true)
+                                        .baselineOnMigrate(true)
+                                        .baselineVersion("0");
+                        Flyway flyway = new Flyway(config);
+                        flyway.migrate();
+                        log.info("PostgreSQL database migrated successfully!");
                     }
-
-                    log.info("Running Flyway migrations for SQLite...");
-                    FluentConfiguration config =
-                            Flyway.configure()
-                                    .dataSource(dataSource)
-                                    .locations("classpath:db/migration_sqlite")
-                                    .sqlMigrationPrefix("V")
-                                    .sqlMigrationSeparator("__")
-                                    .mixed(true)
-                                    .validateOnMigrate(true)
-                                    .baselineOnMigrate(true)
-                                    .baselineVersion("0");
-                    Flyway flyway = new Flyway(config);
-                    flyway.migrate();
-                    log.info("SQLite database migrated successfully!");
-                } else if (dbProductName != null
-                        && dbProductName.toLowerCase().contains("postgres")) {
-                    log.info("Running Flyway migrations for PostgreSQL...");
-                    FluentConfiguration config =
-                            Flyway.configure()
-                                    .dataSource(dataSource)
-                                    .locations(
-                                            "classpath:db/migration_postgres",
-                                            "classpath:db/migration_postgres_data")
-                                    .configuration(
-                                            java.util.Map.of(
-                                                    "flyway.postgresql.transactional.lock",
-                                                    "false"))
-                                    .outOfOrder(true)
-                                    .sqlMigrationPrefix("V")
-                                    .sqlMigrationSeparator("__")
-                                    .mixed(true)
-                                    .validateOnMigrate(true)
-                                    .baselineOnMigrate(true)
-                                    .baselineVersion("0");
-                    Flyway flyway = new Flyway(config);
-                    flyway.migrate();
-                    log.info("PostgreSQL database migrated successfully!");
+                } catch (Exception e) {
+                    log.error("Flyway migration exception: {}", e.getMessage(), e);
                 }
+            } else {
+                log.warn(
+                        "Database type is '{}' but no active DataSource bean found. Skipping SQL Flyway migrations.",
+                        dbType);
+            }
+        }
+
+        if (indexDao.isResolvable()) {
+            try {
+                log.info("Setting up IndexDAO...");
+                indexDao.get().setup();
+                log.info("IndexDAO setup completed successfully.");
             } catch (Exception e) {
-                log.error("Flyway migration exception: {}", e.getMessage(), e);
+                log.error("Failed to setup IndexDAO: {}", e.getMessage(), e);
             }
         }
 
@@ -398,6 +418,11 @@ public class ConductorQuarkusProducers {
         @Override
         public boolean resetOffsetTime(String queueName, String id) {
             return true;
+        }
+
+        @Override
+        public boolean containsMessage(String queueName, String messageId) {
+            return q(queueName).contains(messageId);
         }
 
         @Override

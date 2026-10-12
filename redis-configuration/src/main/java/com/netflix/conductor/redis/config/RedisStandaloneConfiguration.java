@@ -38,6 +38,10 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 @Configuration(proxyBeanMethods = false)
 @Conditional(RedisStandaloneCondition.class)
 @Component
+@io.quarkus.arc.properties.IfBuildProperty(
+        name = "conductor.db.type",
+        stringValue = "redis_standalone",
+        enableIfMissing = true)
 @Slf4j
 public class RedisStandaloneConfiguration extends RedisConfiguration {
 

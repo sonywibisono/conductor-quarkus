@@ -1,22 +1,40 @@
 services:
+  conductor-redis:
+    image: redis:8.2.4-alpine3.22
+    container_name: conductor-redis
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass SandiMasterRedis --masterauth SandiMasterRedis
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redis:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    restart: always
+    networks:
+      - internal
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "SandiMasterRedis", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
   conductor-server:
     environment:
       - CONFIG_PROP=config-clickhouse.properties
       - JAVA_OPTS=-Dpolyglot.engine.WarnInterpreterOnly=false
       - conductor.app.ownerEmailMandatory=false
-      - POSTGRES_USER=sony
-      - POSTGRES_PASSWORD=C0nduct0r4hl1
-      - POSTGRES_URL=jdbc:postgresql://10.14.159.143:5432/conductor_ps
-      - REDIS_HOSTS=10.1.50.168:6379
-      - REDIS_PASSWORD=
-      - CLICKHOUSE_URL=jdbc:clickhouse://host.docker.internal:8123/default
-      - CLICKHOUSE_USERNAME=admin
-      - CLICKHOUSE_PASSWORD=admin123
-      - CLICKHOUSE_SERVER=10.99.20.68
-      - CLICKHOUSE_PORT=8129
-      - CLICKHOUSE_USER=ap2t_olap
+      - REDIS_HOSTS=conductor-redis:6379
+      - REDIS_PASSWORD=SandiMasterRedis
+      - CLICKHOUSE_URL=jdbc:clickhouse://10.99.20.68:8129/conductor?compress=0
+      - CLICKHOUSE_USERNAME=user_conductor
       - CLICKHOUSE_PASSWORD=welcome1
-      - CLICKHOUSE_DB=ap2t_olap
+      - CLICKHOUSE_DB=conductor
+      - CLICKHOUSE_SERVER=10.99.20.68
+      - CLICKHOUSE_HOST=10.99.20.68
+      - CLICKHOUSE_PORT=8129
+      # - CLICKHOUSE_PORT=8129
+      # - CLICKHOUSE_USER=user_conductor
+      # - CLICKHOUSE_PASSWORD=welcome1
     image: conductor:quarkus
     container_name: conductor-server
     build:
@@ -30,7 +48,10 @@ services:
     volumes:
       # Shared with host so file:// URIs from the server resolve on the e2e runner.
       - ./server/config/config-clickhouse.properties:/app/config/config-clickhouse.properties
-      
+    depends_on:
+      conductor-redis:
+        condition: service_healthy
+
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/q/health" ]
       interval: 30s
@@ -41,7 +62,7 @@ services:
     logging:
       driver: "json-file"
       options:
-        max-size: "1k"
+        max-size: "50m"
         max-file: "3"
 
   

@@ -26,6 +26,7 @@ dependencies {
     implementation project(':conductor-clickhouse-persistence')
     implementation project(':conductor-redis-configuration')
     implementation project(':conductor-redis-persistence')
+    implementation project(':conductor-es8-persistence')
 
     implementation "org.flywaydb:flyway-database-postgresql:${revFlyway}"
     implementation "org.flywaydb:flyway-core:${revFlyway}"

@@ -48,9 +48,31 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ElasticSearchProperties.class)
 @Conditional(ElasticSearchConditions.ElasticSearchV8Enabled.class)
+@io.quarkus.arc.properties.IfBuildProperty(
+        name = "conductor.indexing.type",
+        stringValue = "elasticsearch",
+        enableIfMissing = true)
 public class ElasticSearchV8Configuration {
 
     private static final Logger log = LoggerFactory.getLogger(ElasticSearchV8Configuration.class);
+
+    @Bean
+    @io.quarkus.arc.DefaultBean
+    public ElasticSearchProperties elasticSearchProperties() {
+        ElasticSearchProperties props = new ElasticSearchProperties();
+        try {
+            org.eclipse.microprofile.config.Config config =
+                    org.eclipse.microprofile.config.ConfigProvider.getConfig();
+            config.getOptionalValue("conductor.elasticsearch.url", String.class)
+                    .ifPresent(props::setUrl);
+            config.getOptionalValue("conductor.elasticsearch.indexName", String.class)
+                    .ifPresent(props::setIndexPrefix);
+            config.getOptionalValue("conductor.elasticsearch.clusterHealthColor", String.class)
+                    .ifPresent(props::setClusterHealthColor);
+        } catch (Throwable ignored) {
+        }
+        return props;
+    }
 
     @Bean
     public RestClient restClient(RestClientBuilder restClientBuilder) {
@@ -138,12 +160,18 @@ public class ElasticSearchV8Configuration {
             @Qualifier("es8RetryTemplate") RetryTemplate retryTemplate,
             ElasticSearchProperties properties,
             ObjectMapper objectMapper) {
-        String url = properties.getUrl();
-        return new ElasticSearchRestDAOV8(
-                restClientBuilder, retryTemplate, properties, objectMapper);
+        ElasticSearchRestDAOV8 dao =
+                new ElasticSearchRestDAOV8(
+                        restClientBuilder, retryTemplate, properties, objectMapper);
+        try {
+            dao.setup();
+        } catch (Exception e) {
+            log.error("Failed to setup Elasticsearch indices and templates: {}", e.getMessage(), e);
+        }
+        return dao;
     }
 
-    @Bean
+    @Bean("es8RetryTemplate")
     public RetryTemplate es8RetryTemplate() {
         RetryTemplate retryTemplate = new RetryTemplate();
         FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();

@@ -20,6 +20,7 @@ dependencies {
     compileOnly 'org.springframework.retry:spring-retry'
     compileOnly 'jakarta.inject:jakarta.inject-api:2.0.1'
     compileOnly 'jakarta.enterprise:jakarta.enterprise.cdi-api:4.1.0'
+    compileOnly "io.quarkus:quarkus-arc:${quarkusPlatformVersion}"
 
     implementation "com.fasterxml.jackson.core:jackson-annotations:${revFasterXml}"
     implementation "com.fasterxml.jackson.core:jackson-databind:${revFasterXml}"

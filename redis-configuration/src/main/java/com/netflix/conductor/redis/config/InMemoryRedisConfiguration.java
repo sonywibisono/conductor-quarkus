@@ -21,6 +21,7 @@ import com.netflix.conductor.redis.jedis.JedisCommands;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "conductor.db.type", havingValue = "memory")
+@io.quarkus.arc.properties.IfBuildProperty(name = "conductor.db.type", stringValue = "memory")
 public class InMemoryRedisConfiguration {
 
     @Bean

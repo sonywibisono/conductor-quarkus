@@ -29,7 +29,7 @@ RUN if [ "$PREBUILT" = "true" ] || [ -f "/conductor/server/build/quarkus-app/qua
   echo "Using pre-built Quarkus application artifacts"; \
   else \
   ./gradlew :conductor-server:quarkusBuild -x test -x spotlessCheck \
-  -Dconductor.db.type=postgres -Dconductor.indexing.type=clickhouse \
+  -Dconductor.db.type=clickhouse -Dconductor.indexing.type=clickhouse \
   -Dorg.gradle.jvmargs=-Xmx4g \
   --stacktrace --no-daemon --no-parallel && \
   rm -rf /root/.gradle/caches; \

@@ -43,6 +43,9 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 @Configuration(proxyBeanMethods = false)
 @Conditional(RedisSentinelCondition.class)
+@io.quarkus.arc.properties.IfBuildProperty(
+        name = "conductor.db.type",
+        stringValue = "redis_sentinel")
 @Slf4j
 public class RedisSentinelConfiguration extends RedisConfiguration {
 

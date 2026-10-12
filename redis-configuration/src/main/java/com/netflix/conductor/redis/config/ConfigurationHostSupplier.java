@@ -41,11 +41,15 @@ public class ConfigurationHostSupplier implements HostSupplier {
     private List<Host> parseHostsFromConfig() {
         String hosts = properties.getHosts();
         if (hosts == null) {
-            // FIXME This type of validation probably doesn't belong here.
-            String message =
-                    "Missing dynomite/redis hosts. Ensure 'workflow.dynomite.cluster.hosts' has been set in the supplied configuration.";
-            log.error(message);
-            throw new RuntimeException(message);
+            hosts = System.getProperty("conductor.redis.hosts");
+        }
+        if (hosts == null) {
+            hosts = System.getenv("REDIS_HOSTS");
+        }
+        if (hosts == null) {
+            log.warn(
+                    "Missing conductor.redis.hosts in configuration. Falling back to default: localhost:6379:us-east-1c");
+            hosts = "localhost:6379:us-east-1c";
         }
         return parseHostsFrom(hosts);
     }

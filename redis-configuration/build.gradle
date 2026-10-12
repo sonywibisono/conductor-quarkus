@@ -3,6 +3,8 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    compileOnly "io.quarkus:quarkus-arc:${quarkusPlatformVersion}"
+    compileOnly "org.eclipse.microprofile.config:microprofile-config-api:3.1"
 
     implementation project(':conductor-redis-api')
 

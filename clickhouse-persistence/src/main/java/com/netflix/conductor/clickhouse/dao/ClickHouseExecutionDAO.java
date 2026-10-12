@@ -56,6 +56,8 @@ public class ClickHouseExecutionDAO
     }
 
     private void initTables() {
+        com.netflix.conductor.clickhouse.util.ClickHouseInitializer.ensureDatabaseExists(
+                properties);
         try (Connection conn = getConnection();
                 Statement stmt = conn.createStatement()) {
             stmt.execute(

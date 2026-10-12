@@ -24,12 +24,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpStatus;
 import org.conductoross.conductor.es8.dao.query.parser.Expression;
 import org.conductoross.conductor.es8.dao.query.parser.internal.ParserException;
 
 import com.netflix.conductor.common.run.SearchResult;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.SortOptions;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -100,21 +102,29 @@ class Es8SearchSupport {
             String indexName, Query queryBuilder, int start, int size, List<String> sortOptions)
             throws IOException {
         List<SortOptions> sort = buildSortOptions(sortOptions);
-        SearchResponse<Void> response =
-                elasticSearchClient.search(
-                        s -> {
-                            s.index(indexName)
-                                    .query(queryBuilder)
-                                    .from(start)
-                                    .size(size)
-                                    .trackTotalHits(t -> t.enabled(true))
-                                    .source(src -> src.fetch(false));
-                            if (!sort.isEmpty()) {
-                                s.sort(sort);
-                            }
-                            return s;
-                        },
-                        Void.class);
+        SearchResponse<Void> response;
+        try {
+            response =
+                    elasticSearchClient.search(
+                            s -> {
+                                s.index(indexName)
+                                        .query(queryBuilder)
+                                        .from(start)
+                                        .size(size)
+                                        .trackTotalHits(t -> t.enabled(true))
+                                        .source(src -> src.fetch(false));
+                                if (!sort.isEmpty()) {
+                                    s.sort(sort);
+                                }
+                                return s;
+                            },
+                            Void.class);
+        } catch (ElasticsearchException e) {
+            if (isIndexNotFound(e)) {
+                return new SearchResult<>(0, Collections.emptyList());
+            }
+            throw e;
+        }
         List<String> result =
                 response.hits().hits().stream().map(hit -> hit.id()).collect(Collectors.toList());
         long count = totalHits(response);
@@ -131,23 +141,31 @@ class Es8SearchSupport {
             Class<T> clazz)
             throws IOException {
         List<SortOptions> sort = buildSortOptions(sortOptions);
-        SearchResponse<T> response =
-                elasticSearchClient.search(
-                        s -> {
-                            s.index(indexName)
-                                    .query(queryBuilder)
-                                    .from(start)
-                                    .size(size)
-                                    .trackTotalHits(t -> t.enabled(true));
-                            if (idOnly) {
-                                s.source(src -> src.fetch(false));
-                            }
-                            if (!sort.isEmpty()) {
-                                s.sort(sort);
-                            }
-                            return s;
-                        },
-                        clazz);
+        SearchResponse<T> response;
+        try {
+            response =
+                    elasticSearchClient.search(
+                            s -> {
+                                s.index(indexName)
+                                        .query(queryBuilder)
+                                        .from(start)
+                                        .size(size)
+                                        .trackTotalHits(t -> t.enabled(true));
+                                if (idOnly) {
+                                    s.source(src -> src.fetch(false));
+                                }
+                                if (!sort.isEmpty()) {
+                                    s.sort(sort);
+                                }
+                                return s;
+                            },
+                            clazz);
+        } catch (ElasticsearchException e) {
+            if (isIndexNotFound(e)) {
+                return new SearchResult<>(0, Collections.emptyList());
+            }
+            throw e;
+        }
         return mapSearchResult(response, idOnly, clazz);
     }
 
@@ -155,9 +173,26 @@ class Es8SearchSupport {
             throws ParserException, IOException {
         Query queryBuilder = boolQueryBuilder(structuredQuery, freeTextQuery);
         String indexName = getIndexName(docType);
-        CountResponse countResponse =
-                elasticSearchClient.count(c -> c.index(indexName).query(queryBuilder));
-        return countResponse.count();
+        try {
+            CountResponse countResponse =
+                    elasticSearchClient.count(c -> c.index(indexName).query(queryBuilder));
+            return countResponse.count();
+        } catch (ElasticsearchException e) {
+            if (isIndexNotFound(e)) {
+                return 0;
+            }
+            throw e;
+        }
+    }
+
+    private static boolean isIndexNotFound(ElasticsearchException e) {
+        if (e.status() == HttpStatus.SC_NOT_FOUND) {
+            return true;
+        }
+        if (e.error() != null && "index_not_found_exception".equalsIgnoreCase(e.error().type())) {
+            return true;
+        }
+        return e.getMessage() != null && e.getMessage().contains("index_not_found_exception");
     }
 
     List<String> searchArchivableWorkflows(String indexName, long archiveTtlDays)

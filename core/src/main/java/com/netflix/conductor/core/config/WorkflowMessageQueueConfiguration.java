@@ -36,6 +36,7 @@ public class WorkflowMessageQueueConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(WorkflowMessageQueueDAO.class)
+    @io.quarkus.arc.DefaultBean
     public WorkflowMessageQueueDAO inMemoryWorkflowMessageQueueDAO(
             WorkflowMessageQueueProperties properties) {
         return new InMemoryWorkflowMessageQueueDAO(properties);

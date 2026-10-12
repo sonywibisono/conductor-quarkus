@@ -77,6 +77,8 @@ public class ClickHouseIndexDAO implements IndexDAO {
 
     @Override
     public void setup() throws Exception {
+        com.netflix.conductor.clickhouse.util.ClickHouseInitializer.ensureDatabaseExists(
+                properties);
         try (Connection conn = getConnection();
                 Statement stmt = conn.createStatement()) {
 

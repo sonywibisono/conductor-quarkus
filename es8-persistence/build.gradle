@@ -25,6 +25,7 @@ dependencies {
 
     compileOnly 'org.springframework.boot:spring-boot-starter'
     compileOnly 'org.springframework.retry:spring-retry'
+    compileOnly "io.quarkus:quarkus-arc:${quarkusPlatformVersion}"
 
     implementation "commons-io:commons-io:${revCommonsIo}"
     implementation "org.apache.commons:commons-lang3"

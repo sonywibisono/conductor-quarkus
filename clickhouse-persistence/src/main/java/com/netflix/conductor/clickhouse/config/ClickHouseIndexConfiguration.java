@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ClickHouseIndexConfiguration {
 
     @Bean
+    @io.quarkus.arc.DefaultBean
     public ClickHouseProperties clickHouseProperties() {
         return new ClickHouseProperties();
     }

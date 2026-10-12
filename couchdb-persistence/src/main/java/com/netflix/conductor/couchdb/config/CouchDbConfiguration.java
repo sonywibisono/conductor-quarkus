@@ -40,6 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class CouchDbConfiguration {
 
     @Bean
+    @io.quarkus.arc.DefaultBean
     public CouchDbProperties couchDbProperties() {
         return new CouchDbProperties();
     }

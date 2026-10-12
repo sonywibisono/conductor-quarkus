@@ -232,10 +232,20 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
         }
     }
 
+    private final java.util.concurrent.atomic.AtomicBoolean setupDone =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
     @Override
     @PostConstruct
     public void setup() throws Exception {
-        indexManagementSupport.setup();
+        if (setupDone.compareAndSet(false, true)) {
+            try {
+                indexManagementSupport.setup();
+            } catch (Exception e) {
+                setupDone.set(false);
+                throw e;
+            }
+        }
     }
 
     private Query boolQueryBuilder(String expression, String queryString) throws ParserException {
@@ -973,7 +983,7 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
                     ? UpdateOutcome.NOT_FOUND
                     : UpdateOutcome.UPDATED;
         } catch (ElasticsearchException e) {
-            if (e.status() == HttpStatus.SC_NOT_FOUND) {
+            if (isIndexNotFound(e)) {
                 return UpdateOutcome.NOT_FOUND;
             }
             throw e;
@@ -983,16 +993,24 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
     private Optional<String> resolveSingleIndexForId(String indexAlias, String id)
             throws IOException {
         Query idsQuery = Query.of(q -> q.ids(i -> i.values(id)));
-        SearchResponse<Void> response =
-                executeWithRetry(
-                        () ->
-                                elasticSearchClient.search(
-                                        s ->
-                                                s.index(indexAlias)
-                                                        .query(idsQuery)
-                                                        .size(2)
-                                                        .source(src -> src.fetch(false)),
-                                        Void.class));
+        SearchResponse<Void> response;
+        try {
+            response =
+                    executeWithRetry(
+                            () ->
+                                    elasticSearchClient.search(
+                                            s ->
+                                                    s.index(indexAlias)
+                                                            .query(idsQuery)
+                                                            .size(2)
+                                                            .source(src -> src.fetch(false)),
+                                            Void.class));
+        } catch (ElasticsearchException e) {
+            if (isIndexNotFound(e)) {
+                return Optional.empty();
+            }
+            throw e;
+        }
 
         List<String> indices =
                 response.hits().hits().stream()
@@ -1047,7 +1065,7 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
                     ? DeleteOutcome.DELETED
                     : DeleteOutcome.NOT_FOUND;
         } catch (ElasticsearchException e) {
-            if (e.status() == HttpStatus.SC_NOT_FOUND) {
+            if (isIndexNotFound(e)) {
                 return DeleteOutcome.NOT_FOUND;
             }
             throw e;
@@ -1058,10 +1076,16 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
             throws IOException {
         Optional<String> writeIndex = resolveWriteIndexForAlias(indexAlias);
         if (writeIndex.isPresent()) {
-            GetResponse<Map> response =
-                    elasticSearchClient.get(g -> g.index(writeIndex.get()).id(id), Map.class);
-            if (response.found() && response.source() != null) {
-                return response.source();
+            try {
+                GetResponse<Map> response =
+                        elasticSearchClient.get(g -> g.index(writeIndex.get()).id(id), Map.class);
+                if (response.found() && response.source() != null) {
+                    return response.source();
+                }
+            } catch (ElasticsearchException e) {
+                if (!isIndexNotFound(e)) {
+                    throw e;
+                }
             }
         }
 
@@ -1069,9 +1093,26 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
         if (resolvedIndex.isEmpty()) {
             return null;
         }
-        GetResponse<Map> response =
-                elasticSearchClient.get(g -> g.index(resolvedIndex.get()).id(id), Map.class);
-        return response.found() ? response.source() : null;
+        try {
+            GetResponse<Map> response =
+                    elasticSearchClient.get(g -> g.index(resolvedIndex.get()).id(id), Map.class);
+            return response.found() ? response.source() : null;
+        } catch (ElasticsearchException e) {
+            if (!isIndexNotFound(e)) {
+                throw e;
+            }
+            return null;
+        }
+    }
+
+    private static boolean isIndexNotFound(ElasticsearchException e) {
+        if (e.status() == HttpStatus.SC_NOT_FOUND) {
+            return true;
+        }
+        if (e.error() != null && "index_not_found_exception".equalsIgnoreCase(e.error().type())) {
+            return true;
+        }
+        return e.getMessage() != null && e.getMessage().contains("index_not_found_exception");
     }
 
     private <T> void indexDocumentWithIlmFallback(

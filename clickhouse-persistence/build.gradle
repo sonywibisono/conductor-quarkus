@@ -12,6 +12,8 @@ dependencies {
     implementation "org.apache.commons:commons-lang3"
 
     implementation "com.clickhouse:clickhouse-jdbc:${revClickHouse}"
+    // LZ4 compression library for ClickHouse JDBC
+    implementation 'org.lz4:lz4-java:1.8.0'
 
     testImplementation 'org.springframework.retry:spring-retry'
     testImplementation "org.apache.groovy:groovy-all:${revGroovy}"

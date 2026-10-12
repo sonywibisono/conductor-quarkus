@@ -12,6 +12,8 @@
  */
 package com.netflix.conductor.couchdb.config;
 
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "conductor.couchdb")
@@ -34,6 +36,64 @@ public class CouchDbProperties {
 
     /** Read timeout in seconds */
     private int readTimeoutSeconds = 30;
+
+    public CouchDbProperties() {
+        try {
+            Config config = ConfigProvider.getConfig();
+            this.url =
+                    config.getOptionalValue("conductor.couchdb.url", String.class)
+                            .or(() -> config.getOptionalValue("couchdb.url", String.class))
+                            .or(() -> config.getOptionalValue("COUCHDB_URL", String.class))
+                            .orElse(this.url);
+
+            this.username =
+                    config.getOptionalValue("conductor.couchdb.username", String.class)
+                            .or(() -> config.getOptionalValue("couchdb.username", String.class))
+                            .or(() -> config.getOptionalValue("COUCHDB_USERNAME", String.class))
+                            .or(() -> config.getOptionalValue("COUCHDB_USER", String.class))
+                            .orElse(this.username);
+
+            this.password =
+                    config.getOptionalValue("conductor.couchdb.password", String.class)
+                            .or(() -> config.getOptionalValue("couchdb.password", String.class))
+                            .or(() -> config.getOptionalValue("COUCHDB_PASSWORD", String.class))
+                            .orElse(this.password);
+
+            this.dbPrefix =
+                    config.getOptionalValue("conductor.couchdb.dbPrefix", String.class)
+                            .orElse(this.dbPrefix);
+
+            this.connectionTimeoutSeconds =
+                    config.getOptionalValue(
+                                    "conductor.couchdb.connectionTimeoutSeconds", Integer.class)
+                            .orElse(this.connectionTimeoutSeconds);
+
+            this.readTimeoutSeconds =
+                    config.getOptionalValue("conductor.couchdb.readTimeoutSeconds", Integer.class)
+                            .orElse(this.readTimeoutSeconds);
+        } catch (Throwable ignored) {
+            String envUrl =
+                    System.getProperty("conductor.couchdb.url", System.getenv("COUCHDB_URL"));
+            if (envUrl != null && !envUrl.isBlank()) {
+                this.url = envUrl;
+            }
+            String envUser =
+                    System.getProperty(
+                            "conductor.couchdb.username", System.getenv("COUCHDB_USERNAME"));
+            if (envUser == null || envUser.isBlank()) {
+                envUser = System.getenv("COUCHDB_USER");
+            }
+            if (envUser != null && !envUser.isBlank()) {
+                this.username = envUser;
+            }
+            String envPass =
+                    System.getProperty(
+                            "conductor.couchdb.password", System.getenv("COUCHDB_PASSWORD"));
+            if (envPass != null) {
+                this.password = envPass;
+            }
+        }
+    }
 
     public String getUrl() {
         return url;
