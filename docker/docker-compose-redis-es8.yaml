@@ -1,0 +1,76 @@
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.11
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=10gb                                                                
+      - cluster.routing.allocation.disk.watermark.high=5gb                                                                
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb 
+    ports:
+      - 9200:9200
+    networks:
+      - internal
+    volumes:
+      - elasticdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9200" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  conductor:
+    image: conductor:quarkus
+    container_name: conductor
+    env_file:
+      - .env
+    environment:
+      - CONFIG_PROP=config-redis-cluster-es8.properties
+      - JAVA_OPTS=-Dpolyglot.engine.WarnInterpreterOnly=false -Xms256M -Xmx1G
+      - QUARKUS_HTTP_ACCESS_LOG_ENABLED=false 
+      - CONDUCTOR_DB_TYPE=redis_cluster                                                                                  
+      - CONDUCTOR_QUEUE_TYPE=redis_cluster
+      - CONDUCTOR_REDIS_HOSTS=172.28.0.11:7001,172.28.0.12:7002,172.28.0.13:7003
+      - CONDUCTOR_REDIS-LOCK_SERVER-TYPE=CLUSTER
+      - CONDUCTOR_REDIS-LOCK_SERVER-ADDRESS=redis://172.28.0.11:7001,redis://172.28.0.12:7002,redis://172.28.0.13:7003
+      - CONDUCTOR_SCRIPT_CONTEXT_POOL_ENABLED=true                                                                                
+      - CONDUCTOR_SCRIPT_CONTEXT_POOL_SIZE=20
+   
+    volumes:
+      - ./config-redis-cluster-es8.properties:/app/config/config-redis-cluster-es8.properties
+      - ./tmp/conductor-file-storage-e2e:/tmp/conductor-file-storage-e2e
+    stdin_open: true  # sama dengan -i (interactive)
+    tty: true   
+    networks:
+      - internal
+    ports:
+      - 8080:8080
+      - 5050:5000
+      - 9001:9001
+    links:
+      - elasticsearch:es
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "3"  
+    depends_on:  
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-I", "-XGET", "http://localhost:8080/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 12    
+
+   
+volumes:
+  elasticdata:
+
+networks:
+  internal:
+    driver: bridge
