@@ -56,10 +56,13 @@ public class RedisPersistenceConfiguration {
             Config config = ConfigProvider.getConfig();
             config.getOptionalValue("conductor.redis.hosts", String.class)
                     .or(() -> config.getOptionalValue("REDIS_HOSTS", String.class))
+                    .map(String::trim)
                     .ifPresent(props::setHosts);
             config.getOptionalValue("conductor.redis.workflowNamespacePrefix", String.class)
+                    .map(String::trim)
                     .ifPresent(props::setWorkflowNamespacePrefix);
             config.getOptionalValue("conductor.redis.queueNamespacePrefix", String.class)
+                    .map(String::trim)
                     .ifPresent(props::setQueueNamespacePrefix);
         } catch (Throwable t) {
             log.debug("Could not read Redis config from MicroProfile Config Provider", t);

@@ -47,7 +47,7 @@ class Es8SearchSupport {
 
     Es8SearchSupport(ElasticsearchClient elasticSearchClient, String indexPrefix) {
         this.elasticSearchClient = elasticSearchClient;
-        this.indexPrefix = indexPrefix;
+        this.indexPrefix = indexPrefix != null ? indexPrefix.trim() : null;
     }
 
     Query boolQueryBuilder(String expression, String queryString) throws ParserException {
@@ -333,12 +333,13 @@ class Es8SearchSupport {
     }
 
     private String getIndexName(String documentType) {
-        if (StringUtils.isBlank(indexPrefix)) {
+        String prefix = indexPrefix != null ? indexPrefix.trim() : null;
+        if (StringUtils.isBlank(prefix)) {
             return documentType;
         }
-        if (indexPrefix.endsWith("_")) {
-            return indexPrefix + documentType;
+        if (prefix.endsWith("_")) {
+            return prefix + documentType;
         }
-        return indexPrefix + "_" + documentType;
+        return prefix + "_" + documentType;
     }
 }

@@ -55,18 +55,27 @@ public class ConfigurationHostSupplier implements HostSupplier {
     }
 
     private List<Host> parseHostsFrom(String hostConfig) {
-        List<String> hostConfigs = Arrays.asList(hostConfig.split(";"));
+        List<String> hostConfigs = Arrays.asList(hostConfig.split("[;,]"));
+        String defaultRack =
+                properties.getAvailabilityZone() != null
+                        ? properties.getAvailabilityZone().trim()
+                        : "us-east-1c";
 
         return hostConfigs.stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
                 .map(
                         hc -> {
                             String[] hostConfigValues = hc.split(":");
-                            String host = hostConfigValues[0];
-                            int port = Integer.parseInt(hostConfigValues[1]);
-                            String rack = hostConfigValues[2];
+                            String host = hostConfigValues[0].trim();
+                            int port = Integer.parseInt(hostConfigValues[1].trim());
+                            String rack =
+                                    hostConfigValues.length >= 3
+                                            ? hostConfigValues[2].trim()
+                                            : defaultRack;
 
                             if (hostConfigValues.length >= 4) {
-                                String password = hostConfigValues[3];
+                                String password = hostConfigValues[3].trim();
                                 return new HostBuilder()
                                         .setHostname(host)
                                         .setPort(port)

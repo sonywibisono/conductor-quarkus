@@ -53,20 +53,27 @@ public class RedisProperties {
                                                     "workflow.dynomite.cluster.hosts",
                                                     String.class))
                             .or(() -> config.getOptionalValue("REDIS_HOSTS", String.class))
-                            .orElse(this.hosts);
+                            .map(String::trim)
+                            .orElse(this.hosts != null ? this.hosts.trim() : null);
             config.getOptionalValue("conductor.redis.workflowNamespacePrefix", String.class)
+                    .map(String::trim)
                     .ifPresent(this::setWorkflowNamespacePrefix);
             config.getOptionalValue("conductor.redis.queueNamespacePrefix", String.class)
+                    .map(String::trim)
                     .ifPresent(this::setQueueNamespacePrefix);
             config.getOptionalValue("conductor.redis.database", Integer.class)
                     .ifPresent(this::setDatabase);
             config.getOptionalValue("conductor.redis.dataCenterRegion", String.class)
+                    .map(String::trim)
                     .ifPresent(this::setDataCenterRegion);
             config.getOptionalValue("conductor.redis.availabilityZone", String.class)
+                    .map(String::trim)
                     .ifPresent(this::setAvailabilityZone);
             config.getOptionalValue("conductor.redis.clusterName", String.class)
+                    .map(String::trim)
                     .ifPresent(this::setClusterName);
             config.getOptionalValue("conductor.redis.sentinel-master-name", String.class)
+                    .map(String::trim)
                     .ifPresent(this::setSentinelMasterName);
             config.getOptionalValue("conductor.redis.ssl", Boolean.class).ifPresent(this::setSsl);
         } catch (Throwable ignored) {
@@ -303,30 +310,33 @@ public class RedisProperties {
                                     config.getOptionalValue(
                                             "workflow.dynomite.cluster.hosts", String.class))
                     .or(() -> config.getOptionalValue("REDIS_HOSTS", String.class))
-                    .orElse(hosts);
+                    .map(String::trim)
+                    .orElse(hosts != null ? hosts.trim() : null);
         } catch (Throwable ignored) {
-            return hosts;
+            return hosts != null ? hosts.trim() : null;
         }
     }
 
     public void setHosts(String hosts) {
-        this.hosts = hosts;
+        this.hosts = hosts != null ? hosts.trim() : null;
     }
 
     public String getWorkflowNamespacePrefix() {
-        return workflowNamespacePrefix;
+        return workflowNamespacePrefix != null ? workflowNamespacePrefix.trim() : null;
     }
 
     public void setWorkflowNamespacePrefix(String workflowNamespacePrefix) {
-        this.workflowNamespacePrefix = workflowNamespacePrefix;
+        this.workflowNamespacePrefix =
+                workflowNamespacePrefix != null ? workflowNamespacePrefix.trim() : null;
     }
 
     public String getQueueNamespacePrefix() {
-        return queueNamespacePrefix;
+        return queueNamespacePrefix != null ? queueNamespacePrefix.trim() : null;
     }
 
     public void setQueueNamespacePrefix(String queueNamespacePrefix) {
-        this.queueNamespacePrefix = queueNamespacePrefix;
+        this.queueNamespacePrefix =
+                queueNamespacePrefix != null ? queueNamespacePrefix.trim() : null;
     }
 
     public String getKeyspaceDomain() {

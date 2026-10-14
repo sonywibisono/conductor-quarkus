@@ -129,7 +129,8 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
         this.elasticSearchAsyncClient = new ElasticsearchAsyncClient(transport);
         this.properties = properties;
 
-        this.indexPrefix = properties.getIndexPrefix();
+        this.indexPrefix =
+                properties.getIndexPrefix() != null ? properties.getIndexPrefix().trim() : null;
 
         this.workflowIndexName = getIndexName(WORKFLOW_DOC_TYPE);
         this.taskIndexName = getIndexName(TASK_DOC_TYPE);
@@ -253,13 +254,14 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
     }
 
     private String getIndexName(String documentType) {
-        if (StringUtils.isBlank(indexPrefix)) {
+        String prefix = indexPrefix != null ? indexPrefix.trim() : null;
+        if (StringUtils.isBlank(prefix)) {
             return documentType;
         }
-        if (indexPrefix.endsWith("_")) {
-            return indexPrefix + documentType;
+        if (prefix.endsWith("_")) {
+            return prefix + documentType;
         }
-        return indexPrefix + "_" + documentType;
+        return prefix + "_" + documentType;
     }
 
     /**
@@ -1184,7 +1186,8 @@ public class ElasticSearchRestDAOV8 implements IndexDAO {
     }
 
     private Optional<String> resolveWriteIndexForAlias(String alias) throws IOException {
-        Request request = new Request(HttpMethod.GET, "/_alias/" + alias);
+        String cleanAlias = alias != null ? alias.trim() : "";
+        Request request = new Request(HttpMethod.GET, "/_alias/" + cleanAlias);
         try {
             Response response = elasticSearchAdminClient.performRequest(request);
             JsonNode root = objectMapper.readTree(response.getEntity().getContent());

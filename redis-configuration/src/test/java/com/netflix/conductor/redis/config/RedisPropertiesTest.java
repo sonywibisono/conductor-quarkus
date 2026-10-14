@@ -161,6 +161,18 @@ class RedisPropertiesTest {
         assertFalse(prefix.contains(".null"));
     }
 
+    @Test
+    void autoTrimProperties() {
+        properties.setQueueNamespacePrefix("   conductor_queues   ");
+        assertEquals("conductor_queues", properties.getQueueNamespacePrefix());
+
+        properties.setWorkflowNamespacePrefix("   conductor   ");
+        assertEquals("conductor", properties.getWorkflowNamespacePrefix());
+
+        properties.setHosts("   rs:6379:us-east-1c   ");
+        assertEquals("rs:6379:us-east-1c", properties.getHosts());
+    }
+
     // --- ExecutionDAOProperties ---
 
     @Test

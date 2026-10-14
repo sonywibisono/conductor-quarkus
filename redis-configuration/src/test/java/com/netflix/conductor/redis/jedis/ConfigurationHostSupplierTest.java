@@ -86,4 +86,21 @@ public class ConfigurationHostSupplierTest {
         assertEquals("password", firstHost.getPassword());
         assertTrue(firstHost.isUp());
     }
+
+    @Test
+    public void getCommaDelimitedHosts() {
+        when(properties.getHosts()).thenReturn("10.14.65.252:7001, 10.14.65.252:7002");
+        when(properties.getAvailabilityZone()).thenReturn("us-east-1c");
+
+        List<Host> hosts = configurationHostSupplier.getHosts();
+        assertEquals(2, hosts.size());
+
+        assertEquals("10.14.65.252", hosts.get(0).getHostName());
+        assertEquals(7001, hosts.get(0).getPort());
+        assertEquals("us-east-1c", hosts.get(0).getRack());
+
+        assertEquals("10.14.65.252", hosts.get(1).getHostName());
+        assertEquals(7002, hosts.get(1).getPort());
+        assertEquals("us-east-1c", hosts.get(1).getRack());
+    }
 }

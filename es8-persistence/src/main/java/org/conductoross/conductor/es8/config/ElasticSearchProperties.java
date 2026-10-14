@@ -108,27 +108,27 @@ public class ElasticSearchProperties {
     private boolean refreshOnWrite = false;
 
     public String getUrl() {
-        return url;
+        return url != null ? url.trim() : null;
     }
 
     public void setUrl(String url) {
-        this.url = url;
+        this.url = url != null ? url.trim() : null;
     }
 
     public String getIndexPrefix() {
-        return indexPrefix;
+        return indexPrefix != null ? indexPrefix.trim() : null;
     }
 
     public void setIndexPrefix(String indexPrefix) {
-        this.indexPrefix = indexPrefix;
+        this.indexPrefix = indexPrefix != null ? indexPrefix.trim() : null;
     }
 
     public String getClusterHealthColor() {
-        return clusterHealthColor;
+        return clusterHealthColor != null ? clusterHealthColor.trim() : null;
     }
 
     public void setClusterHealthColor(String clusterHealthColor) {
-        this.clusterHealthColor = clusterHealthColor;
+        this.clusterHealthColor = clusterHealthColor != null ? clusterHealthColor.trim() : null;
     }
 
     public int getIndexBatchSize() {

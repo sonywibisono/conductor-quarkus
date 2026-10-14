@@ -70,8 +70,11 @@ public abstract class BaseRedisQueueDAO implements QueueDAO {
         this.conductorProperties = conductorProperties;
 
         // Stack is used for the backward compatibility with the DynoQueues
-        this.queueNamespace =
-                redisProperties.getQueueNamespacePrefix() + "." + conductorProperties.getStack();
+        String prefix = redisProperties.getQueueNamespacePrefix();
+        prefix = prefix != null ? prefix.trim() : "conductor_queues";
+        String stack = conductorProperties.getStack();
+        stack = stack != null ? stack.trim() : "";
+        this.queueNamespace = prefix + "." + stack;
 
         String az = redisProperties.getAvailabilityZone();
         this.queueShard = az.substring(az.length() - 1);

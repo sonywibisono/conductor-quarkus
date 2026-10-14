@@ -86,4 +86,17 @@ public class ElasticSearchPropertiesTest {
             assertTrue(expected.getMessage().contains("conductor.elasticsearch.url"));
         }
     }
+
+    @Test
+    public void testAutoTrimProperties() {
+        ElasticSearchProperties properties = new ElasticSearchProperties();
+        properties.setIndexPrefix("  conductor   ");
+        assertEquals("conductor", properties.getIndexPrefix());
+
+        properties.setUrl("  http://localhost:9200   ");
+        assertEquals("http://localhost:9200", properties.getUrl());
+
+        properties.setClusterHealthColor("  yellow   ");
+        assertEquals("yellow", properties.getClusterHealthColor());
+    }
 }

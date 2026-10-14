@@ -64,10 +64,17 @@ public class ElasticSearchV8Configuration {
             org.eclipse.microprofile.config.Config config =
                     org.eclipse.microprofile.config.ConfigProvider.getConfig();
             config.getOptionalValue("conductor.elasticsearch.url", String.class)
+                    .map(String::trim)
                     .ifPresent(props::setUrl);
             config.getOptionalValue("conductor.elasticsearch.indexName", String.class)
+                    .or(
+                            () ->
+                                    config.getOptionalValue(
+                                            "conductor.elasticsearch.indexPrefix", String.class))
+                    .map(String::trim)
                     .ifPresent(props::setIndexPrefix);
             config.getOptionalValue("conductor.elasticsearch.clusterHealthColor", String.class)
+                    .map(String::trim)
                     .ifPresent(props::setClusterHealthColor);
         } catch (Throwable ignored) {
         }

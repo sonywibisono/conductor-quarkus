@@ -61,6 +61,14 @@ public class ApplicationExceptionMapper {
         EXCEPTION_STATUS_MAP.put(SchemaValidationException.class, HttpStatus.BAD_REQUEST);
         EXCEPTION_STATUS_MAP.put(
                 HttpRequestMethodNotSupportedException.class, HttpStatus.METHOD_NOT_ALLOWED);
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends Throwable> jaxRsNotFound =
+                    (Class<? extends Throwable>) Class.forName("jakarta.ws.rs.NotFoundException");
+            EXCEPTION_STATUS_MAP.put(jaxRsNotFound, HttpStatus.NOT_FOUND);
+        } catch (ClassNotFoundException ignored) {
+            // Not running in a JAX-RS / Quarkus environment
+        }
     }
 
     private final ValidationExceptionMapper validationExceptionMapper =
